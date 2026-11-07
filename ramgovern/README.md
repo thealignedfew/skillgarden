@@ -152,3 +152,7 @@ Then remove the Stop hook entry if you added one, and delete the folder. Trimmed
 ## Licence
 
 MIT. See [LICENSE](LICENSE).
+
+## Field study
+
+[FIELD_STUDY.md](FIELD_STUDY.md) reports eight days of use on one workstation running about a hundred sessions (first draft).
