@@ -148,3 +148,7 @@ Then remove the Stop hook entry if you added one, and delete the folder. Trimmed
 - Trimming costs page-ins later. If a trimmed process wakes, it reads its pages back from the pagefile, which is slower than RAM and slowest on a spinning disk. The idle test, the quiet history for VS Code hosts and the storm halt keep that cost small. Watch `cpu-within-30s` and the daily regrow table.
 - The idle test sees CPU only. A process that is idle on CPU but about to be used (for example, a window you are about to click into) can be trimmed; it pages back in on first use.
 - Windows only. The approach would carry to other process names, but the guards are written around `claude.exe`, `codex.exe` and VS Code's process model.
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).
