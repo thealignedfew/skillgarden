@@ -1,0 +1,208 @@
+{
+  "_about": "Example settings for a fictional household (the Rivera household: two adults, a teenager away at a summer program, a dog). Copy this file to config.json and change it for your own household. Keys that start with an underscore are comments; build_data.py ignores them. Every regex is a JavaScript and Python compatible pattern, matched without regard to case.",
+
+  "_about_title": "Shown as the page heading and the browser tab title.",
+  "title": "The Rivera household ledger",
+
+  "_about_inputs": "Input files, relative to this config file. Subscriptions and orders are optional; they are skipped when the file is missing.",
+  "transactionsCsv": "sample_transactions.csv",
+  "subscriptionsCsv": "subscriptions.csv",
+  "ordersJson": "sample_orders.json",
+
+  "_about_lastMonthPartial": "true marks the last month as partial (shown faded, left out of averages). Leave it out to let the builder decide from the last transaction date.",
+
+  "_about_ignoreCategories": "Tiller categories that are not spending or income: transfers between your own accounts and card payments.",
+  "ignoreCategories": ["Transfer", "Credit Card Payment"],
+
+  "_about_incomeRules": "Money in (positive amounts). Each rule is [regex, source]; the regex is tested against 'Description | Category'. The first match names the income source. Anything else positive is counted under refundSource.",
+  "incomeRules": [
+    ["acme logistics payroll", "Paycheck: Acme Logistics"],
+    ["brightpath studio", "Contract pay: Brightpath Studio"],
+    ["tax refund", "Tax refunds"],
+    ["\\| interest$", "Interest"]
+  ],
+  "refundSource": "Refunds and other deposits",
+
+  "_about_categoryMap": "Rename Tiller categories to the page's categories: {tiller name: page name}.",
+  "categoryMap": { "Restaurants": "Dining, bars & coffee" },
+
+  "_about_catFix": "For spending left in 'Other' or with no category: [regex on vendor, category].",
+  "catFix": [["campus store", "Shopping"]],
+
+  "_about_aliasRules": "Clean vendor names in the builder: [regex on the description, clean name]. Several spellings can point at one name to merge them.",
+  "aliasRules": [
+    ["^grocery mart", "Grocery Mart"],
+    ["shopnow", "ShopNow"],
+    ["^stayover hotels", "Stayover Hotels"],
+    ["corner cafe", "Corner Cafe"]
+  ],
+
+  "_about_vendorRules": "[regex on vendor, tags to add (comma separated, may be empty), category to force (may be empty)].",
+  "vendorRules": [
+    ["^happy paws vet|^pawsure|^pet pantry", "", "Pets"],
+    ["^clay corner studio", "pottery", ""]
+  ],
+
+  "_about_increaseSplit": "Optional. Split a vendor's price rise into its own line from a month on: the part above base goes to label.",
+  "increaseSplit": [
+    { "vendor": "StreamFlix", "from": "2025-09", "base": 15.49, "label": "StreamFlix price rise", "tags": "" }
+  ],
+
+  "_about_payrollSource": "The income source that is smoothed to a flat monthly amount (Options tab) and taxed at taxRate percent, for pay with no tax withheld. Leave empty for none.",
+  "payrollSource": "Contract pay: Brightpath Studio",
+  "taxRate": 22,
+
+  "_about_oneoffIncome": "One-time money in that is not in the transactions: {name: {YYYY-MM: amount}}. It is drawn apart so it does not hide the run rate.",
+  "oneoffIncome": { "Side project payout": { "2026-03": 6500 } },
+  "_about_oneoffTaxable": "Names from oneoffIncome that also get the tax set-aside. oneoffNetOfCenter (optional) subtracts that center's excluded costs first.",
+  "oneoffTaxable": ["Side project payout"],
+  "oneoffNetOfCenter": "",
+
+  "_about_groups": "Groups for the overview charts: each has a name, its page categories and a color. Categories not in any group fall into 'Other'.",
+  "groups": [
+    { "name": "Housing payments", "categories": ["Mortgage, HELOC & loans"], "color": "#1f6f5c" },
+    { "name": "Bills", "categories": ["Utilities, phone & HOA", "Insurance"], "color": "#3d8b6e" },
+    { "name": "Home upkeep", "categories": ["Home & yard", "Services"], "color": "#6fae8c" },
+    { "name": "Food", "categories": ["Groceries", "Dining, bars & coffee"], "color": "#e07a5f" },
+    { "name": "Shopping", "categories": ["Shopping"], "color": "#4f86c6" },
+    { "name": "Debt cost", "categories": ["Card interest & fees"], "color": "#b3261e" },
+    { "name": "Taxes", "categories": ["Income tax set-aside", "Taxes & government"], "color": "#8e7cc3" },
+    { "name": "Subscriptions", "categories": ["Subscriptions"], "color": "#c77dff" },
+    { "name": "Work and business", "categories": ["Business & work tools"], "color": "#5c7cfa" },
+    { "name": "Travel", "categories": ["Travel", "Travel: personal", "Travel: work"], "color": "#edae49" },
+    { "name": "Getting around", "categories": ["Gas, rides & parking", "Car repair"], "color": "#7b5ea7" },
+    { "name": "Health and fitness", "categories": ["Medical & dental", "Fitness & personal care"], "color": "#2a9d8f" },
+    { "name": "Fun, learning and giving", "categories": ["Entertainment & streaming", "Education & activities", "Giving"], "color": "#d1495b" },
+    { "name": "Pets", "categories": ["Pets"], "color": "#9c6644" },
+    { "name": "Legal", "categories": ["Legal & collections"], "color": "#577590" }
+  ],
+
+  "_about_categoryNames": "Default display names, {category: name}. Editable later on the Options tab.",
+  "categoryNames": { "Pets": "Pets" },
+
+  "_about_feeCategory": "The category that holds card interest and fees. fees.avoidable and fees.chosen are regexes on the fee's vendor name; interestAvoidableFrom (YYYY-MM, optional) counts interest as avoidable only from that month.",
+  "feeCategory": "Card interest & fees",
+  "fees": {
+    "avoidable": "late fee|non-sufficient|returned|minimum interest|transfer fee|service charge|over.?limit",
+    "chosen": "annual membership|promo transaction|wire fee"
+  },
+
+  "_about_foodCategories": "Categories summed in the Food tile on the overview.",
+  "foodCategories": ["Groceries", "Dining, bars & coffee"],
+
+  "_about_centers": "Cost and profit centers: a second way to slice spending. id starts with #. match (optional regex on vendor) adds vendors; vendors tagged with the id are added too. hidden: true keeps a center off until 'Show hidden centers' is ticked.",
+  "centers": [
+    { "id": "#HomeCare", "name": "#HomeCare (home maintenance)", "note": "Everything in Home & yard and Services, plus anything tagged #HomeCare." },
+    { "id": "#Dog", "name": "#Dog", "note": "Food, vet and insurance for the dog.", "match": "pet pantry|happy paws|pawsure" },
+    { "id": "#Hobbies", "name": "#Hobbies", "note": "Pottery classes, cycling and games.", "match": "clay corner|spoke & chain|pixelplay store" },
+    { "id": "#Sam", "name": "#Sam (summer program)", "note": "The summer program, travel to it and anything tagged #Sam." },
+    { "id": "#WorkReimb", "name": "Receivable: work expenses", "note": "Work software the employer pays back. Left out of household spending." },
+    { "id": "#Legal", "name": "#Legal", "note": "For reference only: left out of every total on this page." },
+    { "id": "#Gifts", "name": "#Gifts", "note": "Tag gift orders #Gifts on the Vendors tab.", "hidden": true }
+  ],
+
+  "_about_centerRules": "Default center for a whole category, {category: #center}. Editable later on the Options tab.",
+  "centerRules": { "Home & yard": "#HomeCare", "Services": "#HomeCare" },
+
+  "_about_exclude": "Spending to leave out of every total and show in a center instead. match is a regex on vendor; receivable true means it is owed back to you. Optional: category (only that category), before / after (YYYY-MM, only months before or from then), countAsDebt (true adds it back to debt cost when 'True debt cost' is on).",
+  "exclude": [
+    { "match": "^clouddesk pro", "center": "#WorkReimb", "receivable": true },
+    { "match": "^harbor legal group", "center": "#Legal", "receivable": false }
+  ],
+
+  "_about_hobbies": "Hobby cards: id is also the vendor tag that adds a vendor (and -id removes it); re is a regex on vendor; who is a default owner the reader can change.",
+  "hobbies": [
+    { "id": "pottery", "name": "Pottery", "who": "Alex", "note": "Weekly wheel classes since June 2025.", "re": "clay corner" },
+    { "id": "cycling", "name": "Cycling", "who": "Jordan", "note": "", "re": "spoke & chain" },
+    { "id": "gaming", "name": "Gaming", "who": "Sam", "note": "", "re": "pixelplay" }
+  ],
+
+  "_about_dependent": "Optional tab for one dependent. Leave out to hide the tab. matchRegex adds charges by vendor between from and to (YYYY-MM-DD); items adds rows by hand; tripShare gives the dependent a share of a family trip; tag (default: label in lower case) on a vendor adds all its charges.",
+  "dependent": {
+    "label": "Sam",
+    "center": "#Sam",
+    "note": "Sam's summer program in 2026: tuition, the campus store and the bus there and back.",
+    "matchRegex": "lakeside|coastline bus",
+    "from": "2026-05-01",
+    "to": "2026-08-31",
+    "matchWhy": "Summer program, matched by merchant",
+    "items": [
+      { "d": "2026-06-02", "w": "Cash for the program trip", "a": 150, "cat": "Allowance", "why": "Given in cash, added by hand" }
+    ],
+    "tripShare": { "matchRegex": "pacific coast rail", "share": 0.25, "why": "a quarter of the family rail trip" },
+    "leftOut": { "amount": 210, "label": "meals at the program, not tracked" }
+  },
+
+  "_about_travel": "travelCategory is the Tiller category for trips. Vendors in a place marked work, and vendors matching travelGenericRegex in workMonths, become 'Travel: work'; the rest become 'Travel: personal'. Leave workMonths empty and mark no place as work to keep one Travel category.",
+  "travelCategory": "Travel",
+  "travelGenericRegex": "air|airline|hotel|motel|car rental|booking|rail",
+  "workMonths": ["2025-03", "2025-09", "2026-04"],
+
+  "_about_places": "Travel map. keys are vendor names tied to the place (after aliases); months are YYYY-MM. Optional: home (the origin of the trip lines), work, planned, route (part of the route line, no line from home). Leave out places to hide the tab.",
+  "places": [
+    { "name": "Denver (home)", "lat": 39.74, "lon": -104.99, "when": "Home", "home": true, "keys": [], "months": [] },
+    { "name": "Chicago", "lat": 41.88, "lon": -87.63, "when": "Mar 2025, Apr 2026", "work": true, "keys": ["Lakefront Deli"], "months": ["2025-03", "2026-04"] },
+    { "name": "Boise", "lat": 43.62, "lon": -116.21, "when": "Sep 2025", "work": true, "keys": ["Foothills Diner"], "months": ["2025-09"] },
+    { "name": "Santa Fe", "lat": 35.69, "lon": -105.94, "when": "Jul 2025", "keys": ["Mesa Verde Grill"], "months": ["2025-07"] },
+    { "name": "San Diego", "lat": 32.72, "lon": -117.16, "when": "Feb 2026", "keys": ["Harbor Taco Co"], "months": ["2026-02"] },
+    { "name": "Coast rail trip", "lat": 37.77, "lon": -122.42, "when": "Aug 2026", "route": true, "keys": ["Pacific Coast Rail"], "months": ["2026-08"] }
+  ],
+  "_about_route": "Optional dashed route line, a list of [lon, lat]. routeMonth (YYYY-MM) is when it appears on the timeline.",
+  "route": [[-118.24, 34.05], [-120.66, 35.28], [-122.42, 37.77], [-122.68, 45.52], [-122.33, 47.61]],
+  "routeMonth": "2026-08",
+  "_about_map": "mapCenter [lon, lat] and mapZoom set the first view. mapData (optional) points at your own copies of the us-atlas and world-atlas files; by default the page tries local files, then the public CDN.",
+  "mapCenter": [-104, 39],
+  "mapZoom": 3.6,
+
+  "_about_shopping": "Optional Shopping tab for one online store. vendorRegex picks its charges; excludeRegex drops digital or non-shopping lines. orderLookupUrl (optional) builds a link per order, {q} is replaced by the item name. kinds sort orders by item text: [kind, regex]. Leave out to hide the tab.",
+  "shopping": {
+    "label": "ShopNow",
+    "vendorRegex": "shopnow",
+    "excludeRegex": "refund|video|music",
+    "orderLookupUrl": "https://shop.example/orders?search={q}",
+    "kinds": [
+      ["Crafts", "clay|glaze|yarn|fabric|thread|craft"],
+      ["Pets", "dog|leash|kibble|chew|pet "],
+      ["Kitchen", "coffee|kitchen|pan|knife|mug|tea"],
+      ["Tech", "usb|cable|charger|ssd|hdmi|adapter|battery|keyboard|mouse|monitor"],
+      ["Home", "bed|pillow|towel|lamp|bulb|storage|shelf|rug|clean|vacuum"],
+      ["Clothing", "shirt|dress|sock|shoe|pants|jacket|hoodie"]
+    ]
+  },
+  "_about_orderKinds": "Set the kind of one order by its item text: {item: kind}.",
+  "orderKinds": {},
+  "_about_orderTags": "Put orders into a center: [regex on item, #center]. The order takes its matched charge.",
+  "orderTags": [["glaze|clay", "#Hobbies"]],
+
+  "_about_vendorNotes": "A short note shown in a vendor's hover card: {vendor: note}.",
+  "vendorNotes": {
+    "Hometown Mortgage": "30-year fixed, refinanced in 2021.",
+    "CloudDesk Pro": "Work software; the employer pays it back each quarter."
+  },
+
+  "_about_balances": "Optional balances for the Cash in and out tab: checking and cards are lists of [name, amount].",
+  "balances": {
+    "asOf": "Nov 5, 2026",
+    "checking": [["Everyday Checking", 8420]],
+    "cards": [["Rewards Card", 1310], ["Store Card", 240], ["Travel Card", 0]]
+  },
+
+  "_about_known": "Known future items for the 12-month projection: name, amount (negative is money out), month (YYYY-MM), uncertain (starts switched off).",
+  "known": [
+    { "name": "Property tax", "amount": -1450, "month": "2026-12" },
+    { "name": "Summer program deposit", "amount": -1200, "month": "2027-05", "uncertain": true }
+  ],
+  "projection": { "interestSaving": 0 },
+
+  "_about_subscriptions": "subscriptionCategories (optional) limits the automatic subscription finder to these categories; subsStreamingRegex picks the 'streaming and apps' tile.",
+  "subscriptionCategories": ["Entertainment & streaming", "Subscriptions", "Fitness & personal care", "Business & work tools", "Utilities, phone & HOA", "Pets"],
+  "subsStreamingRegex": "stream|music|play|video|app",
+
+  "_about_notes": "Optional page text: cashflow (under the cash chart), leftOut (Notes tab), shopping (under the shopping chart).",
+  "notes": {
+    "cashflow": "Money in is what lands in linked accounts; the two paychecks are the base, contract pay comes and goes.",
+    "leftOut": "Left out everywhere: transfers between our own accounts and card payments. Not linked: the savings account."
+  },
+  "_about_source": "One line on where the data came from, shown on the Notes tab.",
+  "source": "Built from a synthetic Tiller-style export (sample_transactions.csv) for a fictional household."
+}

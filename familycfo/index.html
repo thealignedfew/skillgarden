@@ -1,0 +1,1378 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>familycfo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a ledger with a sticky tab rail; each tab is one question about the household's money. */
+:root {
+  --bg: #f4f6f3; --panel: #ffffff; --ink: #18221d; --muted: #5b6a62; --line: #d9e0db;
+  --accent: #1f6f5c; --accent-soft: #d8ece5; --warn: #b26a00; --bad: #b3261e; --ok: #1f7a3a;
+  --heat0: #eef3ef; --tip: #ffffff;
+  --display: "Newsreader", Georgia, serif; --body: "IBM Plex Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111613; --panel: #18201c; --ink: #e6ede8; --muted: #9aa9a0; --line: #2b3630;
+  --accent: #5cc4a6; --accent-soft: #1d3a31; --warn: #f0b04a; --bad: #ff8a80; --ok: #6fd18a; --heat0: #1c2520; --tip: #1f2924; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111613; --panel: #18201c; --ink: #e6ede8; --muted: #9aa9a0; --line: #2b3630;
+  --accent: #5cc4a6; --accent-soft: #1d3a31; --warn: #f0b04a; --bad: #ff8a80; --ok: #6fd18a; --heat0: #1c2520; --tip: #1f2924; color-scheme: dark }
+html, body { background: var(--bg); color: var(--ink); }
+body { margin: 0; font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 20px 60px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 20px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 4vw, 44px); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 22px; margin: 0; text-wrap: balance; }
+h3 { font-size: 15px; font-weight: 600; margin: 0; }
+.lede { color: var(--muted); max-width: 75ch; margin: 6px 0 0; }
+.lede b { color: var(--ink); }
+.num, td.n, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+nav.tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); display: flex; gap: 4px; overflow-x: auto; padding-block: 8px; border-bottom: 1px solid var(--line); }
+nav.tabs a { white-space: nowrap; padding: 6px 12px; border-radius: 999px; color: var(--muted); text-decoration: none; font-weight: 500; font-size: 14px; }
+nav.tabs a[aria-current="page"] { background: var(--accent); color: var(--bg); }
+nav.tabs a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+section.view { display: grid; gap: 16px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.card .note { color: var(--muted); font-size: 13px; margin: 4px 0 12px; }
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.tiles { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.tile .lab { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.tile .big { font-family: var(--display); font-size: 32px; line-height: 1.15; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.tile .cmp { font-size: 13px; color: var(--muted); margin-top: 4px; font-family: var(--mono); }
+.up { color: var(--bad); } .down { color: var(--ok); } .flat { color: var(--muted); }
+.inc.up { color: var(--ok); } .inc.down { color: var(--bad); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: transparent; }
+.seg button { border: 0; background: transparent; color: var(--ink); padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
+button.seg { padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; color: var(--ink); }
+input[type=search], input[type=text], input[type=number], select, textarea { font: inherit; font-size: 14px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); min-width: 0; }
+input[type=search] { flex: 1 1 200px; }
+textarea { width: 100%; min-height: 140px; box-sizing: border-box; }
+.sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex: none; }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { fill: var(--muted); font-size: 11px; font-family: var(--body); }
+.tip { position: absolute; pointer-events: none; background: var(--tip); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.18); padding: 8px 10px; font-size: 12px; z-index: 4; min-width: 240px; max-width: min(560px, calc(100vw - 32px)); }
+.tip .t { font-weight: 600; margin-bottom: 4px; }
+.tip .r { display: flex; gap: 16px; justify-content: space-between; font-family: var(--mono); }
+.tip .r > span { white-space: nowrap; }
+.tip .r > span:first-child { overflow: hidden; text-overflow: ellipsis; }
+.tip .r.note > span:last-child { white-space: normal; max-width: 380px; text-align: right; }
+.tbox { overflow: auto; max-height: 560px; border: 1px solid var(--line); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { position: sticky; top: 0; background: var(--panel); text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--line); z-index: 1; white-space: nowrap; }
+th button { all: unset; cursor: pointer; }
+th button::after { content: " \2195"; opacity: .4; }
+td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+td.n, th.n { text-align: right; }
+td input[type=text] { width: 100%; box-sizing: border-box; font-size: 12px; padding: 3px 6px; }
+td select { font-size: 12px; padding: 2px 4px; max-width: 170px; }
+td input[type=number] { width: 90px; font-size: 12px; padding: 3px 6px; text-align: right; }
+.pill { display: inline-block; font-size: 11px; padding: 0 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.pill.ok { color: var(--ok); } .pill.warn { color: var(--warn); } .pill.bad { color: var(--bad); } .pill.mut { color: var(--muted); }
+.hob { display: grid; gap: 8px; }
+.hob .head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.hob .amt { font-family: var(--display); font-size: 26px; }
+.hob ul { margin: 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
+.hob label { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.small { font-size: 12px; color: var(--muted); }
+.chk { display: flex; gap: 6px; align-items: center; }
+.save { font-size: 12px; color: var(--muted); min-height: 1em; }
+#map { width: 100%; height: 520px; }
+.assump { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
+.assump label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.assump .chk { color: var(--ink); }
+details summary { cursor: pointer; font-weight: 600; }
+.wide { margin-inline: calc(50% - 50vw + 16px); }
+@media (max-width: 700px) { .wide { margin-inline: 0; } #map { height: 380px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="title">familycfo</h1>
+    <p class="lede" id="lede">Loading transactions…</p>
+  </header>
+
+  <nav class="tabs" aria-label="Sections">
+    <a href="#overview">Overview</a>
+    <a href="#spending">Spending</a>
+    <a href="#vendors">Vendors</a>
+    <a href="#cashflow">Cash in and out</a>
+    <a href="#subscriptions">Subscriptions</a>
+    <a href="#hobbies">Hobbies</a>
+    <a href="#centers">Centers</a>
+    <a href="#dependent" id="depTab">Dependent</a>
+    <a href="#travel">Travel map</a>
+    <a href="#shopping">Shopping</a>
+    <a href="#notes">Notes</a>
+    <a href="#options">Options</a>
+  </nav>
+
+  <section class="view" id="v-overview">
+    <div class="tiles" id="kpis"></div>
+    <div class="card">
+      <h2>Spending by month, stacked by group</h2>
+      <p class="note" id="stackNote">Spending is stacked in groups; the bright bar beside each period is money in. Use the group chart below to drive this one.</p>
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Period" id="per1"><button type="button" data-p="m" aria-pressed="true">Monthly</button><button type="button" data-p="q" aria-pressed="false">Quarterly</button></div>
+        <div class="seg" role="group" aria-label="Bar direction" id="orient"><button type="button" data-o="v" aria-pressed="true">Vertical</button><button type="button" data-o="h" aria-pressed="false">Horizontal</button></div>
+        <label class="small chk"><input type="checkbox" id="showInc" checked> Money in</label>
+        <button type="button" class="seg" id="allcats">Reset</button>
+      </div>
+      <div class="controls" id="stackOpts">
+        <div class="seg" role="group" aria-label="Palette" id="pal"><button type="button" data-v="pastel" aria-pressed="true">Pastel</button><button type="button" data-v="vivid" aria-pressed="false">Vivid</button></div>
+        <div class="seg" role="group" aria-label="Money in detail" id="incMode"><button type="button" data-v="source" aria-pressed="true">Money in by source</button><button type="button" data-v="total" aria-pressed="false">One total</button></div>
+        <label class="small chk" id="optOneWrap"><input type="checkbox" id="optOne"> One-time money in</label>
+        <label class="small chk"><input type="checkbox" id="optNet"> Net line</label>
+        <label class="small chk"><input type="checkbox" id="optAvg" checked> <span id="optAvgLab">12-month average</span></label>
+        <label class="small chk" id="optPartialWrap"><input type="checkbox" id="optPartial"> <span id="optPartialLab">Hide the partial month</span></label>
+        <label class="small chk"><input type="checkbox" id="optDebt"> Leave out debt cost</label>
+      </div>
+      <div class="chart" id="stack"></div>
+    </div>
+    <div class="card">
+      <h2 id="gTitle">Groups, last 12 months</h2>
+      <p class="note">This chart filters the one above. Select a group's bar to split it into its categories (select again to fold it back). Focus shows that group alone; Hide and Show take it out or put it back. The thin bar under each is the comparison period. The small line on the right is the group's monthly history, with the chosen period shaded; hover it for any month.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px" class="small">
+        <label>Period <select id="gPer"></select></label>
+        <span id="gCustom" hidden><select id="gFrom" aria-label="From month"></select> to <select id="gTo" aria-label="To month"></select></span>
+        <label>Compare with <select id="gCmp"><option value="prev">the period just before</option><option value="yoy">the same period a year earlier</option><option value="none">nothing</option></select></label>
+        <label class="chk" id="gDebtWrap"><input type="checkbox" id="gDebt"> True debt cost</label>
+      </div>
+      <div class="chart" id="groupChart"></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-spending" hidden>
+    <div class="card">
+      <h2>Heatmap of spending</h2>
+      <p class="note">Each row is a category; darker means more spent in that period. Use "Within each row" to see a category's own peaks.</p>
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Period" id="per2"><button type="button" data-p="m" aria-pressed="true">Monthly</button><button type="button" data-p="q" aria-pressed="false">Quarterly</button></div>
+        <div class="seg" role="group" aria-label="Color scale" id="heatScale"><button type="button" data-s="row" aria-pressed="true">Within each row</button><button type="button" data-s="all" aria-pressed="false">Across all</button></div>
+      </div>
+      <div class="chart" id="heat" style="overflow-x:auto"></div>
+    </div>
+    <div class="card">
+      <h2>Categories and budget</h2>
+      <p class="note" id="catNote">Last 12 months next to the 12 before. Type a monthly budget in Target; it saves and is compared with the last three months.</p>
+      <div class="tbox"><table id="catTable"><thead><tr>
+        <th><button type="button" data-k="cat">Category</button></th>
+        <th class="n"><button type="button" data-k="l12">Last 12</button></th>
+        <th class="n"><button type="button" data-k="p12">Prior 12</button></th>
+        <th class="n"><button type="button" data-k="chg">Change</button></th>
+        <th class="n"><button type="button" data-k="avg">Per month</button></th>
+        <th class="n"><button type="button" data-k="l3" id="thL3">Last 3 avg</button></th>
+        <th class="n">Target per month</th>
+        <th>Status</th>
+      </tr></thead><tbody></tbody></table></div>
+      <div class="save" id="budSave"></div>
+    </div>
+  </section>
+
+  <section class="view wide" id="v-vendors" hidden>
+    <div class="card">
+      <h2>Top vendors</h2>
+      <p class="note" id="vNote">Every merchant in the data. Change a category or add tags and it saves; totals across the page update.</p>
+      <div class="controls">
+        <input type="search" id="vq" placeholder="Search vendor, category or tag" aria-label="Search vendors">
+        <select id="vcat" aria-label="Category filter"><option value="">All categories</option></select>
+        <select id="vpat" aria-label="Pattern filter"><option value="">All patterns</option><option>One-off</option><option>Sporadic</option><option>Recurring</option></select>
+        <label class="small chk"><input type="checkbox" id="vcard"> Show card</label>
+        <select id="vlim" aria-label="Rows"><option value="150">Top 150</option><option value="400">Top 400</option><option value="99999">All</option></select>
+      </div>
+      <div class="tbox" style="max-height:1120px"><table id="vTable"><thead><tr>
+        <th><button type="button" data-k="v">Vendor</button></th>
+        <th>Category</th>
+        <th class="vcardcol">Paid with</th>
+        <th>Where</th>
+        <th><button type="button" data-k="centers">Centers</button></th>
+        <th>Hobbies</th>
+        <th><button type="button" data-k="pat">Pattern</button></th>
+        <th>Active</th>
+        <th class="n"><button type="button" data-k="l12">Last 12</button></th>
+        <th class="n"><button type="button" data-k="p12">Prior 12</button></th>
+        <th class="n"><button type="button" data-k="chg">Change</button></th>
+        <th id="thSpark">By month</th>
+        <th>Tags</th>
+      </tr></thead><tbody></tbody></table></div>
+      <div class="save" id="ovSave"></div>
+    </div>
+    <div class="card" id="renames">
+      <h2>Aliases: rename and merge vendors</h2>
+      <p class="note">Give any merchant a clean name. Point two or more merchant names at the same alias and they merge into one row, with their totals added, everywhere on the page. The builder also applies the aliasRules in config.json on every build, so this list is only for what is left. Put an alias in config.json when the original name must not be readable at all.</p>
+      <div class="controls">
+        <input type="search" id="rnFrom" list="rnList" placeholder="Vendor as it appears now" aria-label="Vendor to rename">
+        <datalist id="rnList"></datalist>
+        <input type="text" id="rnTo" placeholder="New name" aria-label="New name">
+        <button type="button" id="rnAdd" class="seg">Rename</button>
+      </div>
+      <div class="tbox"><table id="rnTable"><thead><tr><th>Original</th><th>Shown as</th><th></th></tr></thead><tbody></tbody></table></div>
+      <div class="save" id="rnSave"></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-cashflow" hidden>
+    <div class="card">
+      <h2>Cash in and cash out</h2>
+      <p class="note" id="cashNote">Money in (above the line) and spending (below) by month, with the net. One-time items are drawn separately so they don't hide the run rate.</p>
+      <div class="chart" id="cash"></div>
+      <div class="tiles" id="cashTiles" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <h2>Next 12 months</h2>
+      <p class="note">A projection of cash in checking from the balances in config.json. Change any assumption and the line redraws; the known items can be switched on or off. This is arithmetic on your assumptions, not a forecast of what will happen.</p>
+      <div class="assump" id="assump">
+        <label>Starting cash in checking<input type="number" id="a-start" step="100"></label>
+        <label>Money in per month<input type="number" id="a-inc" step="100"></label>
+        <label>Spending per month<input type="number" id="a-sp" step="100"></label>
+        <label>Monthly saving from paying off cards (interest)<input type="number" id="a-int" step="50"></label>
+      </div>
+      <div class="assump" id="known" style="margin-top:10px"></div>
+      <div class="chart" id="proj" style="margin-top:12px"></div>
+    </div>
+    <div class="grid">
+      <div class="card" id="cardsCard"><h3 id="cardsTitle">Card balances</h3><div class="tbox" style="margin-top:8px"><table id="cardsT"><tbody></tbody></table></div></div>
+      <div class="card" id="intCard"><h3>Interest and fees by account, last 12 months</h3><div class="tbox" style="margin-top:8px"><table id="intT"><tbody></tbody></table></div></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-subscriptions" hidden>
+    <div class="card">
+      <h2>Subscriptions and recurring charges</h2>
+      <p class="note">Found by looking for the same merchant and amount in three or more months, or read from your subscriptions file. Check means not monthly or possibly still running; Stopped means no charge in the last 50 days.</p>
+      <div class="tiles" id="subTiles" style="margin-bottom:12px"></div>
+      <div class="controls"><input type="search" id="sq" placeholder="Search service, card or note" aria-label="Search subscriptions">
+        <select id="sst" aria-label="Status"><option value="">All statuses</option><option>Active</option><option>Check</option><option>Stopped</option></select></div>
+      <div class="tbox"><table id="sTable"><thead><tr>
+        <th><button type="button" data-k="service">Service</button></th><th class="n"><button type="button" data-k="amount">Amount</button></th><th><button type="button" data-k="cadence">How often</button></th><th><button type="button" data-k="last_charge">Last charge</button></th><th><button type="button" data-k="paid_with">Paid with</button></th><th><button type="button" data-k="status">Status</button></th><th>Note</th>
+      </tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-hobbies" hidden>
+    <div class="card">
+      <h2>Hobbies, as the transactions tell it</h2>
+      <p class="note">Inferred from merchants. Correct who each one belongs to in the box under it; add or remove a vendor from a hobby with a tag on the Vendors tab (the hobby's id, or the id with a minus sign in front to take one out).</p>
+    </div>
+    <div class="grid" id="hobGrid"></div>
+    <div class="save" id="hobSave"></div>
+  </section>
+
+  <section class="view" id="v-centers" hidden>
+    <div class="card">
+      <h2>Cost and profit centers</h2>
+      <p class="note" id="ctrNote">A second way to slice the same money, alongside categories.</p>
+      <label class="small chk" id="optHiddenWrap" style="margin-bottom:10px"><input type="checkbox" id="optHidden"> Show hidden centers</label>
+      <div class="tiles" id="centerTiles"></div>
+    </div>
+    <div class="grid" id="centerGrid" style="position:relative"></div>
+    <div class="card">
+      <h2>Avoidable fees</h2>
+      <p class="note">Hover a row to see its single charges: date, card and amount, plus any tags or note you added.</p>
+      <p class="note" id="feeNote">Late fees, returned-payment and insufficient-funds fees, overdraft and service charges, plus card interest. Annual fees, promotional transaction fees and wire fees are listed apart as chosen costs.</p>
+      <div class="tbox"><table id="feeT"><thead><tr><th>Fee</th><th>Type</th><th class="n">Last 12</th><th class="n">Prior 12</th><th class="n" id="thSince">Since</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-dependent" hidden>
+    <div class="tiles" id="depTiles"></div>
+    <div class="card">
+      <h2 id="depTitle">Spending for a dependent</h2>
+      <p class="note" id="depNote"></p>
+      <div class="tbox"><table id="eTable"><thead><tr><th>Date</th><th>What</th><th class="n">Amount</th><th>Why it is here</th></tr></thead><tbody></tbody></table></div>
+      <p class="small" id="depFoot"></p>
+    </div>
+  </section>
+
+  <section class="view" id="v-travel" hidden>
+    <div class="card">
+      <h2>Where we've been</h2>
+      <p class="note">Places from config.json, tied to the vendors listed for each. Circle size is the spend tied to that place; drag and zoom the map. Blue circles are work trips, green are personal, amber is planned. On the Vendors tab, tag a travel vendor "work" or "personal" to move it.</p>
+      <div id="map" role="img" aria-label="Map of trips"></div>
+      <div class="controls" style="margin-top:10px">
+        <button type="button" id="tlPlay" class="seg" style="padding:5px 14px">▶ Play</button>
+        <input type="range" id="tlRange" min="0" max="25" value="25" style="flex:1 1 200px" aria-label="Timeline month">
+        <span id="tlLabel" class="mono small" style="min-width:9em">All trips</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Trips</h3>
+      <div class="tbox" style="margin-top:8px"><table id="tTable"><thead><tr><th>Place</th><th>When</th><th class="n">Spend tied to it</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-shopping" hidden>
+    <div class="tiles" id="shopTiles"></div>
+    <div class="card">
+      <h2 id="shopTitle">Online shopping, month by month</h2>
+      <p class="note" id="shopNote"></p>
+      <div class="chart" id="shopChart"></div>
+    </div>
+    <div class="card" id="ordersCard">
+      <h2>What the orders were</h2>
+      <p class="note">Item names come from your order list (the ordersJson file). The list carries no totals, so each order takes the first store charge within 7 days after it, and no charge is used twice. Orders from the last few days may not have a charge yet. Set a kind per order with orderKinds in config.json.</p>
+      <div class="controls"><input type="search" id="aq" placeholder="Search items" aria-label="Search orders">
+        <select id="akind" aria-label="Kind"><option value="">All kinds</option></select></div>
+      <div class="tbox"><table id="aTable"><thead><tr><th>Ordered</th><th>Item</th><th>Kind</th><th>Charge</th><th class="lookcol">Look up</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-options" hidden>
+    <div class="card">
+      <h2>Options</h2>
+      <p class="note" id="optIntro">Defaults for the whole page. The controls on each tab still change the view for the moment.</p>
+      <div class="opts" id="optsForm" style="display:grid;gap:14px;max-width:560px">
+        <label class="small">Theme <select id="oTheme"><option value="auto">Auto (follow the system)</option><option value="dark">Dark</option><option value="light">Light</option></select></label>
+        <label class="small">Bar direction <select id="oOrient"><option value="h">Horizontal</option><option value="v">Vertical</option></select></label>
+        <label class="small">Colors <select id="oPal"><option value="pastel">Pastel spending, neon money in</option><option value="vivid">Vivid</option></select></label>
+        <label class="small">Money in <select id="oInc"><option value="source">By source</option><option value="total">One total</option></select></label>
+        <label class="small chk" id="oOneWrap"><input type="checkbox" id="oOne"> Show one-time money in and the tax set aside on it</label>
+        <label class="small chk" id="oSmoothWrap"><input type="checkbox" id="oSmooth"> <span id="oSmoothLab">Smooth pay to a flat monthly amount</span></label>
+        <label class="small chk" id="oDebtWrap"><input type="checkbox" id="oDebt"> True debt cost: add excluded card interest back into debt cost</label>
+        <label class="small" id="oTaxWrap">Income tax set-aside, percent <input type="number" id="oTax" min="0" max="60" step="1" style="width:5em"></label>
+        <label class="small">Category display names, one per line as "Category = Name"<textarea id="oCatNames" rows="3" style="width:100%"></textarea></label>
+        <label class="small">Default center for a whole category, one per line as "Category = #Center"<textarea id="oCtrRules" rows="3" style="width:100%"></textarea></label>
+        <p class="small" id="oExplain" style="margin:0"></p>
+        <span class="small" id="optSave"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-notes" hidden>
+    <div class="card">
+      <h2>Notes and corrections</h2>
+      <p class="note">Write anything here: corrections, context, questions for the next pass. It saves as you type.</p>
+      <textarea id="notes" aria-label="Notes"></textarea>
+      <div class="save" id="noteSave"></div>
+    </div>
+    <div class="card">
+      <details><summary>How this page was built</summary>
+        <p class="small" id="srcNote"></p>
+        <p class="small" id="leftNote"></p>
+        <p class="small" id="storeNote"></p>
+      </details>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@4.9.0/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script>
+(async function () {
+  'use strict';
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const el = (t, props = {}, kids = []) => { const e = document.createElement(t); Object.assign(e, props); for (const k of [].concat(kids)) if (k != null) e.append(k); return e; };
+  const lsGet = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } };
+  const applyTheme = (t) => { if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme'); };
+  applyTheme(lsGet('familycfo.theme') || 'auto');
+  if (!window.d3) { $('#lede').textContent = 'The chart library did not load. Check the internet connection and reload.'; return; }
+
+  const usd = d3.format('$,.0f'), usd2 = d3.format('$,.2f');
+  const pct = (a, b) => b ? (a - b) / b : null;
+  const fmtPct = (p) => p == null ? 'new' : (p > 0 ? '+' : '') + d3.format('.0%')(p);
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const rx = (s) => { try { return new RegExp(s || '(?!)', 'i'); } catch (e) { return /(?!)/; } };
+
+  // ---------- data ----------
+  let D;
+  try { const r = await fetch('data.json', { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status); D = await r.json(); }
+  catch (e) { $('#lede').textContent = 'data.json did not load. Run build_data.py, then open this page through a local web server (python -m http.server), not straight from the file.'; return; }
+  const TITLE = D.title || 'familycfo';
+  document.title = TITLE; $('#title').textContent = TITLE;
+  for (const k of ['vendors', 'subs', 'interest', 'oneoff', 'places', 'hobbies', 'orders', 'known', 'centers', 'exclude', 'tx', 'groups', 'orderTags', 'workMonths']) if (!Array.isArray(D[k])) D[k] = [];
+  if (!D.income || typeof D.income !== 'object') D.income = {};
+  const M = D.months || [], NM = M.length;
+  if (!NM) { $('#lede').textContent = 'data.json has no months. Check the transactions file and run build_data.py again.'; return; }
+  const PARTIAL = !!D.partial && NM > 1;
+  const LAST = PARTIAL ? NM - 2 : NM - 1;                       // last full month
+  const rng = (a, b) => d3.range(Math.max(0, a), Math.max(0, b + 1));
+  const L12 = rng(LAST - 11, LAST), P12 = rng(LAST - 23, LAST - 12), L3 = rng(LAST - 2, LAST);
+  const mDate = M.map((m) => new Date(m + '-01T00:00:00Z'));
+  const fmtM = (i) => d3.utcFormat('%b %Y')(mDate[i]);
+  const spanLab = (a) => !a.length ? 'no months' : a.length === 1 ? fmtM(a[0]) : fmtM(a[0]) + ' to ' + fmtM(a[a.length - 1]);
+  const isPartial = (i) => PARTIAL && i === NM - 1;
+  const qOf = (i) => { const d = mDate[i]; return d.getUTCFullYear() + ' Q' + (Math.floor(d.getUTCMonth() / 3) + 1); };
+  const sum = (a, idx) => idx.reduce((s, i) => s + ((a || [])[i] || 0), 0);
+  const TX = D.tx.map(([d, v, a, ac]) => ({ d, v, a: +a, ac: String(ac) }));
+  const pairsText = (o) => Object.entries(o || {}).map(([a, b]) => a + ' = ' + b).join('\n');
+
+  // ---------- saved state: the claude.ai artifact database when present, else this browser's localStorage ----------
+  const ST = { ov: {}, ren: {}, bud: {}, who: {}, notes: '', opt: { orient: 'h', pal: 'pastel', incMode: 'source', smooth: true, taxRate: +D.taxRate || 0, one: false, trueDebt: false, catNames: pairsText(D.categoryNames), centerRules: pairsText(D.centerRules), showCard: false } };
+  let db = null;
+  try { if (window.claude && typeof window.claude.use === 'function') db = await window.claude.use('db'); } catch (e) { db = null; }
+  const LSP = 'familycfo:';
+  const lsOK = (() => { try { localStorage.setItem(LSP + 'probe', '1'); localStorage.removeItem(LSP + 'probe'); return true; } catch (e) { return false; } })();
+  const store = {
+    async get(path) {
+      if (db) { const s = await db.doc(path).get(); return s.exists ? JSON.parse(JSON.stringify(s.data() || {})) : null; }
+      if (!lsOK) return null;
+      try { const v = localStorage.getItem(LSP + path); return v ? JSON.parse(v) : null; } catch (e) { return null; }
+    },
+    async set(path, body) {
+      if (db) return db.doc(path).set(body);
+      try { localStorage.setItem(LSP + path, JSON.stringify(body)); } catch (e) { throw { code: 'no_storage' }; }
+    },
+  };
+  const canSave = !!db || lsOK;
+  const saved = (id, msg) => { const n = $(id); if (n) n.textContent = msg; };
+  const writeQ = {};
+  function persist(path, body, statusId) {
+    if (!canSave) { saved(statusId, 'Saving is not available in this browser; changes last until you leave the page.'); return; }
+    clearTimeout(writeQ[path]);
+    writeQ[path] = setTimeout(async () => {
+      try { await store.set(path, body); saved(statusId, 'Saved ' + new Date().toLocaleTimeString() + (db ? '' : ' in this browser')); }
+      catch (e) { saved(statusId, e && e.code === 'invalid_argument' ? 'You can view this page but not change it.' : 'Could not save just now; try again in a moment.'); }
+    }, 600);
+  }
+  try {
+    const [o, b, n, op] = await Promise.all(['settings/overrides', 'settings/budget', 'settings/notes', 'settings/options'].map((p) => store.get(p).catch(() => null)));
+    if (op) Object.assign(ST.opt, op);
+    if (o) { ST.ov = o.vendors || {}; ST.ren = o.renames || {}; }
+    if (b) ST.bud = b.targets || {};
+    if (n) { ST.notes = n.text || ''; ST.who = n.who || {}; }
+  } catch (e) { /* render without saved state */ }
+  const saveOv = (sid) => persist('settings/overrides', { vendors: ST.ov, renames: ST.ren }, sid || '#ovSave');
+  const dn = (raw) => ST.ren[raw] || raw;
+  const saveBud = () => persist('settings/budget', { targets: ST.bud }, '#budSave');
+  const saveNotes = (sid) => persist('settings/notes', { text: ST.notes, who: ST.who }, sid);
+
+  // ---------- derived data ----------
+  // Travel split: vendors tied to a work place, and generic travel vendors in work months, become work travel.
+  const TRAVEL = D.travelCategory || 'Travel', T_WORK = TRAVEL + ': work', T_PERS = TRAVEL + ': personal';
+  const WORKV = new Set(D.places.filter((p) => p.work).flatMap((p) => p.keys || []));
+  const WORKM = new Set(D.workMonths);
+  const SPLIT = WORKV.size > 0 || WORKM.size > 0;
+  const GEN_TRAVEL = rx(D.travelGenericRegex || 'air|airline|hotel|motel|car rental|booking');
+  if (SPLIT) D.vendors = D.vendors.flatMap((r) => {
+    if (r.c !== TRAVEL) return [r];
+    if (WORKV.has(r.v)) return [{ ...r, c: T_WORK }];
+    if (GEN_TRAVEL.test(r.v)) return [{ ...r, c: T_WORK, m: r.m.map((v, i) => WORKM.has(M[i]) ? v : 0) }, { ...r, c: T_PERS, m: r.m.map((v, i) => WORKM.has(M[i]) ? 0 : v) }].filter((x) => d3.sum(x.m) > 0);
+    return [{ ...r, c: T_PERS }];
+  });
+  // Exclusions: matching spending leaves every total and is shown in its center instead.
+  const EXR = D.exclude.map((x) => ({ ...x, re: rx(x.match) }));
+  D.excluded = [];
+  D.vendors = D.vendors.flatMap((r) => {
+    const rule = EXR.find((x) => x.re.test(r.v) && (!x.category || x.category === r.c));
+    if (!rule) return [r];
+    const x = r.m.map((v, i) => (rule.before && M[i] >= rule.before) || (rule.after && M[i] < rule.after) ? 0 : v);
+    if (!d3.sum(x)) return [r];
+    D.excluded.push({ v: r.v, ac: r.ac, c: r.c, center: rule.center || '#Excluded', receivable: !!rule.receivable, countAsDebt: !!rule.countAsDebt, m: x });
+    const left = r.m.map((v, i) => v - x[i]);
+    return d3.sum(left) ? [{ ...r, m: left }] : [];
+  });
+  const FEE = D.feeCategory || 'Card interest & fees';
+  const vkey = (r) => r.v + '|' + r.c;
+  const tagsOf = (r) => (((ST.ov[vkey(r)] || {}).tags || '') + ',' + (r.tags || '')).toLowerCase().split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
+  const catOf = (r) => { const o = (ST.ov[vkey(r)] || {}).c; if (o) return o; if (SPLIT && r.c.startsWith(TRAVEL + ':')) { const t = tagsOf(r); if (t.includes('work')) return T_WORK; if (t.includes('personal')) return T_PERS; } return r.c; };
+  let CATS = [], catM = {}, total = [];
+  const COLORS = ['#1f6f5c','#d1495b','#edae49','#00798c','#7b5ea7','#e07a5f','#3d405b','#81b29a','#f2a541','#5e8c61','#b56576','#4f86c6','#c97c5d','#8d99ae','#a3a948','#6d597a','#2a9d8f','#e9c46a','#9c6644','#577590','#bc4749','#43aa8b'];
+  let colorOf = () => '#888';
+  let ONE = !!ST.opt.one;
+  function recompute() {
+    catM = {}; total = new Array(NM).fill(0);
+    for (const r of D.vendors) { if (r.oneTime && !ONE) continue; const c = catOf(r); const a = catM[c] || (catM[c] = new Array(NM).fill(0)); r.m.forEach((v, i) => { a[i] += v; total[i] += v; }); }
+    if (ST.opt.trueDebt) for (const x of D.excluded) { if (!x.countAsDebt) continue; const fc = mapCat(FEE); const a = catM[fc] || (catM[fc] = new Array(NM).fill(0)); x.m.forEach((v, i) => { a[i] += v; total[i] += v; }); }
+    CATS = Object.keys(catM).sort((a, b) => sum(catM[b], L12) - sum(catM[a], L12));
+    const fixed = {}; CATS.forEach((c, i) => fixed[c] = COLORS[i % COLORS.length]);
+    colorOf = (c) => fixed[c] || '#888';
+  }
+  const TAX = 'Income tax set-aside';
+  const pairs = (txt) => String(txt || '').split(/\n+/).map((l) => l.split('=').map((x) => x.trim())).filter((p) => p.length === 2 && p[0] && p[1]);
+  const mapCat = (c) => { const p = pairs(ST.opt.catNames).find(([a]) => a.toLowerCase() === String(c).toLowerCase()); return p ? p[1] : c; };
+  const centerRulesList = () => pairs(ST.opt.centerRules);
+  const RAW_INC = JSON.parse(JSON.stringify(D.income));
+  const BASE_V = D.vendors.slice();
+  const PAY = D.payrollSource && RAW_INC[D.payrollSource] ? D.payrollSource : '';
+  const ONE_NET = D.oneoffNetOfCenter ? d3.sum(D.excluded.filter((x) => x.center === D.oneoffNetOfCenter), (x) => d3.sum(x.m)) : 0;
+  const ONE_TAXABLE = (D.oneoffTaxable || []).filter((k) => RAW_INC[k]);
+  const SMOOTH = {};
+  function applyOpts() {
+    D.income = JSON.parse(JSON.stringify(RAW_INC));
+    const raw = PAY ? RAW_INC[PAY] : [];
+    const f = raw.findIndex((v) => v > 0), last = LAST;
+    if (f >= 0 && f <= last) {
+      const paid = d3.range(f, last + 1).filter((i) => raw[i] > 0);
+      SMOOTH.pay = d3.sum(paid, (i) => raw[i]) / paid.length; SMOOTH.from = f; SMOOTH.to = last;
+      if (ST.opt.smooth) D.income[PAY] = raw.map((v, i) => i >= f && i <= last ? SMOOTH.pay : (i > last ? v : 0));
+    }
+    const rate = (+ST.opt.taxRate || 0) / 100;
+    const payTax = PAY ? D.income[PAY].map((v) => v * rate) : new Array(NM).fill(0);
+    const oneTax = new Array(NM).fill(0); let netLeft = ONE_NET;
+    for (const k of ONE_TAXABLE) RAW_INC[k].forEach((v, i) => { if (v > 0) { const d = Math.min(v, netLeft); netLeft -= d; oneTax[i] += (v - d) * rate; } });
+    SMOOTH.oneTax = d3.sum(oneTax);
+    const mergedV = new Map();
+    for (const r of BASE_V) { const k = dn(r.v) + '|' + mapCat(r.c), o = mergedV.get(k);
+      if (!o) mergedV.set(k, { ...r, m: r.m.slice() });
+      else { r.m.forEach((v, i) => o.m[i] += v); o.ac = [...new Set(String(o.ac).split('/').concat(String(r.ac).split('/')))].filter(Boolean).join('/'); o.tags = [o.tags, r.tags].filter(Boolean).join(','); o.aliasOf = (o.aliasOf || [o.v]).concat(r.v); } }
+    const taxLines = [];
+    if (rate && PAY) taxLines.push({ v: 'Tax set-aside: ' + PAY, c: TAX, ac: '', m: payTax, note: Math.round(rate * 100) + '% of ' + PAY + ', set aside each month for income tax.' });
+    if (rate && d3.sum(oneTax)) taxLines.push({ v: 'Tax set-aside: one-time money in', c: TAX, ac: '', m: oneTax, oneTime: true, note: Math.round(rate * 100) + '% of ' + ONE_TAXABLE.join(', ') + (ONE_NET ? ', net of ' + D.oneoffNetOfCenter : '') + '. Counted only when one-time money in is switched on.' });
+    D.vendors = [...mergedV.values()].map((r) => ({ ...r, c: mapCat(r.c) })).concat(taxLines);
+  }
+  applyOpts();
+  recompute();
+  const allCats = () => [...new Set(D.vendors.map((r) => r.c).concat(Object.values(ST.ov).map((o) => o.c).filter(Boolean)))].sort();
+  const incTotal = (excl) => { const a = new Array(NM).fill(0); for (const [k, v] of Object.entries(D.income)) { if (excl && D.oneoff.includes(k)) continue; v.forEach((x, i) => a[i] += x); } return a; };
+
+  // ---------- tooltip ----------
+  function tipFor(box) { let t = box.querySelector(':scope > .tip'); if (!t) { t = el('div', { className: 'tip' }); t.hidden = true; box.append(t); } return t; }
+  function showTip(box, ev, title, rows) {
+    const t = tipFor(box); t.replaceChildren(el('div', { className: 't', textContent: title }));
+    for (const [k, v, c] of rows) { const r = el('div', { className: 'r' + (String(v).length > 48 ? ' note' : '') }); const l = el('span'); if (c) l.append(el('span', { className: 'sw', style: 'background:' + c + ';margin-right:6px' })); l.append(k); r.append(l, el('span', { textContent: v })); t.append(r); }
+    t.hidden = false; const [x, y] = d3.pointer(ev, box); const w = t.offsetWidth, h = t.offsetHeight;
+    t.style.left = Math.max(0, Math.min(box.clientWidth - w, x + 14)) + 'px'; t.style.top = Math.max(0, y - h - 10) + 'px';
+  }
+  const hideTip = (box) => { const t = box.querySelector(':scope > .tip'); if (t) t.hidden = true; };
+
+  // ---------- periods ----------
+  let per = 'm';
+  function periods() {
+    if (per === 'm') return M.map((m, i) => ({ label: d3.utcFormat("%b '%y")(mDate[i]), idx: [i], partial: isPartial(i) }));
+    return d3.groups(d3.range(NM), qOf).map(([q, idx]) => ({ label: q, idx, partial: idx.some(isPartial) || idx.length < 3 }));
+  }
+
+  // ---------- centers (definitions) ----------
+  const DEP = D.dependent && D.dependent.label ? D.dependent : null;
+  const DEP_TAG = DEP ? String(DEP.tag || DEP.label).toLowerCase() : null;
+  const CENTERS = D.centers.filter((c) => c && c.id).map((c) => ({ ...c, name: c.name || c.id, note: c.note || '', re: c.match ? rx(c.match) : null }));
+  for (const x of D.excluded) if (!CENTERS.some((c) => c.id === x.center)) CENTERS.push({ id: x.center, name: x.center, note: x.receivable ? 'Owed back to you. Left out of household spending.' : 'For reference only: left out of every total on this page.' });
+  if (DEP && DEP.center && !CENTERS.some((c) => c.id === DEP.center)) CENTERS.push({ id: DEP.center, name: DEP.center + ' (' + DEP.label + ')', note: 'Matches from the ' + DEP.label + ' tab plus anything tagged ' + DEP.center + '.' });
+  const centerName = (id) => (CENTERS.find((c) => c.id === id) || { name: id }).name;
+  const EXCL_NAMES = [...new Set(D.excluded.map((x) => centerName(x.center)))];
+
+  // ---------- fees ----------
+  const FEES = D.fees || {};
+  const FEE_AVOID = rx(FEES.avoidable || 'late fee|non-sufficient|returned|minimum interest|transfer fee|service charge|over.?limit|overdraft');
+  const FEE_CHOSEN = rx(FEES.chosen || 'annual membership|annual fee|promo transaction|wire fee');
+  const CUT = FEES.interestAvoidableFrom ? (() => { const i = M.findIndex((m) => m >= FEES.interestAvoidableFrom); return i < 0 ? NM : i; })() : 0;
+  const SINCE_LAB = CUT === 0 ? 'All months' : CUT >= NM ? 'Since ' + FEES.interestAvoidableFrom : 'Since ' + fmtM(CUT);
+  function feeKind(v) { return FEE_AVOID.test(v) ? 'Avoidable' : /interest/i.test(v) ? 'Interest' : FEE_CHOSEN.test(v) ? 'Chosen cost' : 'Other fee'; }
+  function feeTotals() {
+    const z = () => ({ l12: 0, p12: 0, since: 0 });
+    const out = { avoid: z(), interest: z(), chosen: z() };
+    for (const r of D.vendors) { if (catOf(r) !== mapCat(FEE)) continue; const k = feeKind(r.v);
+      const since = r.m.slice(CUT).reduce((s, v) => s + v, 0);
+      if (k === 'Avoidable') { out.avoid.l12 += sum(r.m, L12); out.avoid.p12 += sum(r.m, P12); out.avoid.since += since; }
+      else if (k === 'Interest') { out.interest.l12 += sum(r.m, L12); out.interest.p12 += sum(r.m, P12); out.interest.since += since; out.avoid.since += since; }
+      else { out.chosen.l12 += sum(r.m, L12); out.chosen.p12 += sum(r.m, P12); out.chosen.since += since; } }
+    return out;
+  }
+
+  // ---------- overview ----------
+  const FOOD = (D.foodCategories && D.foodCategories.length ? D.foodCategories : ['Groceries', 'Dining, bars & coffee']);
+  function kpis() {
+    const l12 = sum(total, L12), p12 = sum(total, P12), n12 = L12.length || 1;
+    const inc = incTotal(true);
+    const subRows = D.subs.filter((x) => x.status === 'Active' && x.cadence === 'Monthly').sort((a, b) => b.amount - a.amount);
+    const subsM = d3.sum(subRows, (r) => +r.amount);
+    const food = FOOD.map((c) => catM[mapCat(c)] || []);
+    const foodL = food.reduce((s, a) => s + sum(a, L12), 0), foodP = food.reduce((s, a) => s + sum(a, P12), 0);
+    const ft = feeTotals();
+    const t = [
+      ['Spent, last 12 months', usd(l12), p12, l12, false],
+      ['Average per month', usd(l12 / n12), p12 / (P12.length || 1), l12 / n12, false],
+      ['Avoidable fees, last 12', usd(ft.avoid.l12), ft.avoid.p12, ft.avoid.l12, false],
+      ['Food: ' + FOOD.map((c) => mapCat(c).toLowerCase()).join(' and '), usd(foodL), foodP, foodL, false],
+      ['Money in, as recorded', usd(sum(inc, L12)), sum(inc, P12), sum(inc, L12), true],
+      ['Subscriptions running', usd2(subsM) + '/mo', null, null, false],
+    ];
+    const mLab = (i) => fmtM(i);
+    const vsRows = (a, b) => [['Last 12 (' + spanLab(L12) + ')', usd(a)], ['Prior 12', usd(b)], ['Change', fmtPct(pct(a, b))]];
+    const topCats = CATS.map((c) => [c, sum(catM[c], L12)]).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([c, v]) => ['  ' + c, usd(v)]);
+    const lo = L12.reduce((a, i) => total[i] < total[a] ? i : a, L12[0]), hi = L12.reduce((a, i) => total[i] > total[a] ? i : a, L12[0]);
+    const feeRows = D.vendors.filter((r) => catOf(r) === mapCat(FEE) && feeKind(r.v) === 'Avoidable').map((r) => [dn(r.v), sum(r.m, L12), sum(r.m, P12)])
+      .filter((r) => r[1] + r[2] > 0).sort((a, b) => b[1] - a[1] || b[2] - a[2]).slice(0, 5).map(([v, a, b]) => ['  ' + v, usd(a) + ' (prior ' + usd(b) + ')']);
+    const incRows = Object.keys(D.income).filter((k) => !D.oneoff.includes(k)).map((k) => [k, sum(D.income[k], L12)]).filter((r) => r[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => ['  ' + k, usd(v)]);
+    const TIPS = [
+      ['Spent, last 12 months', [...vsRows(l12, p12), ['Biggest categories', ''], ...topCats, ['Left out', EXCL_NAMES.length ? EXCL_NAMES.join(', ') : 'nothing excluded']]],
+      ['Average per month', [['Last 12 divided by ' + n12, usd(l12 / n12)], ['Prior 12 average', usd(p12 / (P12.length || 1))], ['Highest month', L12.length ? mLab(hi) + ', ' + usd(total[hi]) : ''], ['Lowest month', L12.length ? mLab(lo) + ', ' + usd(total[lo]) : ''], ...(PARTIAL ? [[fmtM(NM - 1), 'partial, not counted']] : [])]],
+      ['Avoidable fees', [...vsRows(ft.avoid.l12, ft.avoid.p12), ['Largest lines', ''], ...feeRows, ['Details', 'hover rows on the Centers tab']]],
+      ['Food', [...FOOD.map((c, i) => [mapCat(c), usd(sum(food[i], L12)) + ' (prior ' + usd(sum(food[i], P12)) + ')']), ['Per month', usd(foodL / n12)]]],
+      ['Money in, as recorded', [...vsRows(sum(inc, L12), sum(inc, P12)), ['Largest sources', ''], ...incRows, ['Left out', 'one-time items'], ['Note', 'only deposits in linked accounts']]],
+      ['Subscriptions running', [['Active monthly services', String(subRows.length)], ...subRows.slice(0, 6).map((x) => ['  ' + x.service, usd2(x.amount)]), ['Per year', usd(subsM * 12)], ['All of them', 'Subscriptions tab']]],
+    ];
+    const kbox = $('#kpis'); kbox.style.position = 'relative';
+    kbox.replaceChildren(...t.map(([lab, big, prev, cur, isInc], ti) => {
+      const p = prev == null ? null : pct(cur, prev);
+      const cls = p == null ? 'flat' : (Math.abs(p) < 0.03 ? 'flat' : (p > 0 ? 'up' : 'down'));
+      return el('div', { className: 'tile', onmousemove: (ev) => showTip(kbox, ev, TIPS[ti][0], TIPS[ti][1]), onmouseleave: () => hideTip(kbox) }, [el('div', { className: 'lab', textContent: lab }), el('div', { className: 'big', textContent: big }),
+        el('div', { className: 'cmp ' + (isInc ? 'inc ' : '') + cls, textContent: prev == null ? 'Charged in the last 50 days' : 'vs ' + usd(prev) + ' prior 12 (' + fmtPct(p) + ')' }),
+        lab.startsWith('Avoidable') && EXCL_NAMES.length ? el('div', { className: 'cmp', textContent: 'Excluded centers are left out of every total' }) : null]);
+    }));
+    const p = pct(l12, p12);
+    $('#lede').replaceChildren('In the last 12 months (' + spanLab(L12) + ') the household spent ', el('b', { textContent: usd(l12) }), ' (', el('b', { textContent: usd(l12 / n12) }), ' a month), ',
+      el('b', { textContent: fmtPct(p) }), ' against the 12 months before.');
+  }
+
+  // ---------- centers ----------
+  function centerRows(id) {
+    const out = [], lc = id.toLowerCase(), cdef = CENTERS.find((c) => c.id === id) || {};
+    for (const r of D.vendors) {
+      const t = tagsOf(r);
+      if (t.includes('-' + lc)) continue;
+      let m = null;
+      if (t.includes(lc) || (DEP && id === DEP.center && t.includes(DEP_TAG))) m = r.m.slice();
+      else if (centerRulesList().some(([c, ctr]) => ctr.toLowerCase() === lc && catOf(r) === c)) m = r.m.slice();
+      else if (cdef.re && cdef.re.test(r.v)) m = r.m.slice();
+      if (m && d3.sum(m) > 0) out.push({ v: dn(r.v), raw: r, m });
+    }
+    D.excluded.filter((x) => x.center === id).forEach((x) => out.push({ v: dn(x.v), raw: x, m: x.m.slice() }));
+    for (const [orx, tag] of D.orderTags) {
+      if (String(tag).toLowerCase() !== lc || !SHOP) continue;
+      if (!shopMatch) matchOrders();
+      const re = rx(orx);
+      D.orders.filter((o) => re.test(o.item)).forEach((o) => { const h = shopMatch.get(o); if (!h) return; const k = M.indexOf(h.d.slice(0, 7)); if (k < 0) return; const m = new Array(NM).fill(0); m[k] = h.a; out.push({ v: SHOP.label + ': ' + o.item, m }); });
+    }
+    if (DEP && id === DEP.center) { const items = depItems().filter((i) => i.d !== 'tagged'); const m = new Array(NM).fill(0);
+      items.forEach((i) => { const k = M.indexOf(String(i.d).slice(0, 7)); if (k >= 0) m[k] += i.a; }); if (d3.sum(m)) out.push({ v: 'Spent on ' + DEP.label + ' (from the ' + DEP.label + ' tab)', m }); }
+    return out;
+  }
+  const showHidden = () => lsGet('familycfo.showHidden') === '1';
+  function chargesFor(raw) {
+    if (!raw || !raw.v) return [];
+    const names = new Set(raw.aliasOf || [raw.v]), acs = String(raw.ac || '').split('/').filter(Boolean);
+    return TX.filter((t) => names.has(t.v) && (!acs.length || acs.includes(t.ac))).sort((a, b) => a.d < b.d ? 1 : -1);
+  }
+  function chargeTip(box, ev, raw, label) {
+    const ch = chargesFor(raw), rows = [];
+    ch.slice(0, 8).forEach((t) => rows.push([t.d + ' · card ' + t.ac, usd2(t.a)]));
+    if (ch.length > 8) rows.push(['and ' + (ch.length - 8) + ' earlier', usd2(d3.sum(ch.slice(8), (t) => t.a))]);
+    if (!ch.length && raw.m) { const mm = d3.range(NM).filter((i) => raw.m[i] > 0); mm.slice(-10).reverse().forEach((i) => rows.push([fmtM(i), usd2(raw.m[i])])); if (mm.length > 10) rows.push(['and ' + (mm.length - 10) + ' earlier months', usd2(d3.sum(mm.slice(0, -10), (i) => raw.m[i]))]); rows.push(['Total', usd2(d3.sum(raw.m))]); }
+    else if (!ch.length) rows.push(['Single charges', 'not loaded for this one']);
+    const ov = ST.ov[vkey(raw)] || {};
+    const note = raw.note || (D.vendorNotes || {})[dn(raw.v)] || (D.vendorNotes || {})[raw.v];
+    if (note) rows.unshift(['What it is', note]);
+    if (raw.aliasOf) rows.push(['Merged from', raw.aliasOf.join(', ')]);
+    else if (dn(raw.v) !== raw.v) rows.push(['Name in the data', raw.v]);
+    if (raw.ac) rows.push(['Paid with', 'card ' + String(raw.ac).split('/').join(', ')]);
+    if (ov.tags || raw.tags) rows.push(['Tags', [ov.tags, raw.tags].filter(Boolean).join(', ')]);
+    if (ov.note) rows.push(['Note', ov.note]);
+    showTip(box, ev, label, rows);
+  }
+  function centers() {
+    const ex = CENTERS[0] ? CENTERS[0].id : '#Center';
+    $('#ctrNote').textContent = 'A second way to slice the same money, alongside categories. A charge keeps its category and can also belong to a center. To put a whole vendor in a center, add the center\'s tag on the Vendors tab (for example "' + ex + '"); "-' + ex + '" takes one out. ' + (EXCL_NAMES.length ? 'Receivable and reference centers (' + EXCL_NAMES.join(', ') + ') hold spending that is left out of every total. ' : '') + 'Set default centers for whole categories on the Options tab.';
+    $('#optHiddenWrap').hidden = !CENTERS.some((c) => c.hidden);
+    const cards = CENTERS.filter((c) => !c.hidden || showHidden()).map((c) => { const rows = centerRows(c.id); const m = new Array(NM).fill(0); rows.forEach((r) => r.m.forEach((v, i) => m[i] += v)); return { c, rows, m }; });
+    $('#centerTiles').replaceChildren(...cards.map(({ c, m }) => el('div', { className: 'tile' }, [el('div', { className: 'lab', textContent: c.id }), el('div', { className: 'big', textContent: usd(sum(m, L12)) }), el('div', { className: 'cmp', textContent: 'vs ' + usd(sum(m, P12)) + ' prior 12' })])));
+    $('#centerGrid').replaceChildren(...cards.map(({ c, rows, m }) => el('div', { className: 'card hob' }, [
+      el('div', { className: 'head' }, [el('h3', { textContent: c.name }), el('span', { className: 'small', textContent: usd(d3.sum(m)) + ' over ' + NM + ' months' })]),
+      el('p', { className: 'small', textContent: c.note, style: 'margin:0' }),
+      el('ul', {}, rows.map((r) => ({ v: r.v, raw: r.raw, t: d3.sum(r.m) })).sort((a, b) => b.t - a.t).slice(0, 8).map((r) => el('li', { textContent: r.v + ': ' + usd(r.t), onmousemove: r.raw ? (ev) => chargeTip($('#centerGrid'), ev, r.raw, r.v) : null, onmouseleave: () => hideTip($('#centerGrid')) })))])));
+    $('#thSince').textContent = SINCE_LAB;
+    $('#feeNote').textContent = 'Late fees, returned-payment and insufficient-funds fees, overdraft and service charges at any date, plus card interest' + (CUT > 0 ? ' from ' + (CUT < NM ? fmtM(CUT) : FEES.interestAvoidableFrom) + ' on' : '') + '. Annual fees, promotional transaction fees and wire fees are listed apart as chosen costs.';
+    const fr = D.vendors.filter((r) => catOf(r) === mapCat(FEE)).map((r) => ({ raw: r, v: dn(r.v), k: feeKind(r.v), l12: sum(r.m, L12), p12: sum(r.m, P12), since: r.m.slice(CUT).reduce((s, v) => s + v, 0) }))
+      .filter((r) => r.l12 + r.p12 + r.since > 0).sort((a, b) => (a.k === 'Avoidable' ? -1 : 0) - (b.k === 'Avoidable' ? -1 : 0) || b.l12 - a.l12);
+    const ft = feeTotals();
+    const feeBox = $('#feeT').closest('.card'); feeBox.style.position = 'relative';
+    $('#feeT tbody').replaceChildren(...fr.map((r) => el('tr', { onmousemove: (ev) => chargeTip(feeBox, ev, r.raw, r.v), onmouseleave: () => hideTip(feeBox) }, [el('td', { textContent: r.v }), el('td', {}, el('span', { className: 'pill ' + (r.k === 'Avoidable' ? 'bad' : r.k === 'Interest' ? 'warn' : 'mut'), textContent: r.k })),
+      el('td', { className: 'n', textContent: usd(r.l12) }), el('td', { className: 'n', textContent: usd(r.p12) }), el('td', { className: 'n', textContent: usd(r.since) })])),
+      el('tr', {}, [el('td', { textContent: 'Avoidable total (fees any time, interest ' + (CUT > 0 ? SINCE_LAB.toLowerCase() : 'in all months') + ')' }), el('td'), el('td', { className: 'n', textContent: usd(ft.avoid.l12) }), el('td', { className: 'n', textContent: usd(ft.avoid.p12) }), el('td', { className: 'n', textContent: usd(ft.avoid.since) })]));
+  }
+
+  // ---------- groups ----------
+  const DEFAULT_GROUPS = [
+    ['Housing payments', ['Mortgage, HELOC & loans', 'Rent'], '#1f6f5c'], ['Bills', ['Utilities, phone & HOA', 'Insurance'], '#3d8b6e'],
+    ['Home upkeep', ['Home & yard', 'Services'], '#6fae8c'], ['Food', ['Groceries', 'Dining, bars & coffee'], '#e07a5f'], ['Shopping', ['Shopping'], '#4f86c6'],
+    ['Debt cost', [FEE], '#b3261e'], ['Taxes', [TAX, 'Taxes & government'], '#8e7cc3'], ['Subscriptions', ['Subscriptions'], '#c77dff'],
+    ['Travel', [TRAVEL, T_PERS, T_WORK], '#edae49'], ['Getting around', ['Gas, rides & parking', 'Car repair'], '#7b5ea7'],
+    ['Health and fitness', ['Medical & dental', 'Fitness & personal care'], '#2a9d8f'], ['Fun, learning and giving', ['Entertainment & streaming', 'Education & activities', 'Giving'], '#d1495b'],
+    ['Pets', ['Pets'], '#9c6644'],
+  ];
+  const GROUPS = (D.groups.length ? D.groups : DEFAULT_GROUPS).map((g) => Array.isArray(g) ? g : [g.name, g.categories || [], g.color || '#8d99ae']);
+  const groupOf = (c) => (GROUPS.find((g) => g[1].map(mapCat).includes(c)) || ['Other', [], '#8d99ae'])[0];
+  const gColor = (g) => (GROUPS.find((x) => x[0] === g) || [0, 0, '#8d99ae'])[2];
+  const G = { expanded: new Set(), hidden: new Set(), focus: null, orient: ST.opt.orient, inc: true, pal: ST.opt.pal, incMode: ST.opt.incMode, one: !!ST.opt.one, net: false, avg: true, hidePartial: false, debtOut: false };
+  const NEON = ['#39ff14', '#b6ff00', '#00ffa3', '#9dffb0', '#d4ff8a', '#ffe600', '#00e5ff', '#ff9f1c', '#f15bb5'];
+  const INC_COLORS = {}; Object.keys(RAW_INC).sort((a, b) => d3.sum(RAW_INC[b]) - d3.sum(RAW_INC[a])).forEach((k, i) => INC_COLORS[k] = NEON[i % NEON.length]);
+  const pastel = (c) => G.pal === 'pastel' ? d3.interpolateRgb(c, '#ffffff')(0.42) : c;
+  function groupList() { const gs = GROUPS.map((g) => g[0]); if (CATS.some((c) => groupOf(c) === 'Other') && !gs.includes('Other')) gs.push('Other'); return gs.filter((g) => catsIn(g).length); }
+  function catsIn(g) { return CATS.filter((c) => groupOf(c) === g); }
+  function seriesKeys() {
+    const keys = [], debtG = groupOf(mapCat(FEE));
+    for (const g of groupList()) {
+      if (G.focus && G.focus !== g) continue;
+      if (!G.focus && G.hidden.has(g)) continue;
+      if (G.debtOut && g === debtG && G.focus !== g) continue;
+      if (G.expanded.has(g) || G.focus === g) { const cs = catsIn(g); const base = d3.hsl(gColor(g));
+        cs.forEach((c, i) => keys.push({ key: c, label: c, color: d3.hsl(base.h, base.s, Math.max(.25, Math.min(.75, base.l - .18 + .36 * (cs.length > 1 ? i / (cs.length - 1) : .5)))).formatHex(), cats: [c], group: g })); }
+      else keys.push({ key: g, label: g, color: gColor(g), cats: catsIn(g), group: g });
+    }
+    return keys;
+  }
+  function stack() {
+    const box = $('#stack'); box.querySelectorAll('svg').forEach((n) => n.remove());
+    const P = periods().filter((p) => !(G.hidePartial && p.idx.some(isPartial)));
+    const K0 = seriesKeys(); const K = K0.map((k) => ({ ...k, color: pastel(k.color) }));
+    const srcs = Object.keys(D.income).filter((s) => G.one || !D.oneoff.includes(s)).sort((a, b) => d3.sum(D.income[b]) - d3.sum(D.income[a]));
+    const IK = G.incMode === 'source' ? srcs.map((s) => ({ key: 'in:' + s, label: s, color: INC_COLORS[s] || '#39ff14', srcs: [s] })) : [{ key: 'in:total', label: 'Money in', color: '#39ff14', srcs }];
+    const rows = P.map((p) => { const o = { label: p.label, partial: p.partial, inc: 0 }; for (const k of K) o[k.key] = d3.sum(k.cats, (c) => sum(catM[c], p.idx));
+      for (const k of IK) { o[k.key] = d3.sum(k.srcs, (s) => sum(D.income[s], p.idx)); o.inc += o[k.key]; } o.spent = d3.sum(K, (k) => o[k.key]); return o; });
+    const series = d3.stack().keys(K.map((k) => k.key))(rows);
+    const iseries = d3.stack().keys(IK.map((k) => k.key))(rows);
+    const top = d3.max(rows, (r) => Math.max(r.spent, G.inc ? r.inc : 0)) || 1;
+    const avgV = d3.sum(K0, (k) => d3.sum(k.cats, (c) => sum(catM[c], L12))) / (L12.length || 1) * (per === 'q' ? 3 : 1);
+    const H = G.orient === 'v' ? 360 : Math.max(320, rows.length * 22 + 40);
+    const W = Math.max(320, box.clientWidth);
+    const svg = d3.select(box).insert('svg', ':first-child').attr('viewBox', `0 0 ${W} ${H}`);
+    const tipRows = (r) => { const items = K.map((k) => [k.label, r[k.key], k.color]).filter((a) => a[1] > 0).sort((a, b) => b[1] - a[1]);
+      const out = items.slice(0, 12).map(([c, v, col]) => [c, usd(v), col]);
+      if (G.inc) IK.forEach((k) => { if (r[k.key] > 0) out.push([k.label, usd(r[k.key]), k.color]); });
+      if (G.inc) out.push(['Net', usd(r.inc - r.spent)]); return out; };
+    const hitKey = (r, v, inc) => { let acc = 0; for (const k of (inc ? IK : K)) { acc += r[k.key]; if (v <= acc) return { k, lo: acc - r[k.key], hi: acc }; } return null; };
+    const tipRowsH = (r, h, inc) => { const out = tipRows(r); if (h) out.unshift(['▶ ' + h.k.label, usd(r[h.k.key]) + ' (' + d3.format('.0%')((inc ? r.inc : r.spent) ? r[h.k.key] / (inc ? r.inc : r.spent) : 0) + ')', h.k.color]); return out; };
+    const tipTitle = (r) => r.label + (r.partial ? ' (partial)' : '') + ': spent ' + usd(d3.sum(K, (k) => r[k.key]));
+    const avgLab = (L12.length === 12 ? '12-month' : L12.length + '-month') + ' average spend ' + usd(avgV);
+    if (G.orient === 'v') {
+      const ml = 58, mb = 28, mt = 8;
+      const x = d3.scaleBand(rows.map((r) => r.label), [ml, W - 8]).padding(0.16);
+      const lowNet = G.net && G.inc ? Math.min(0, d3.min(rows, (r) => r.inc - r.spent)) : 0;
+      const y = d3.scaleLinear([lowNet, top], [H - mb, mt]).nice();
+      const sw = G.inc ? x.bandwidth() * 0.68 : x.bandwidth();
+      svg.append('g').selectAll('line').data(y.ticks(5)).join('line').attr('x1', ml).attr('x2', W - 8).attr('y1', y).attr('y2', y).attr('stroke', css('--line'));
+      svg.append('g').selectAll('text').data(y.ticks(5)).join('text').attr('x', ml - 6).attr('y', y).attr('dy', '.32em').attr('text-anchor', 'end').text((v) => d3.format('$~s')(v));
+      const step = Math.ceil(rows.length / Math.max(1, Math.floor((W - ml) / 52)));
+      svg.append('g').selectAll('text').data(rows.filter((r, i) => i % step === 0)).join('text').attr('x', (r) => x(r.label) + x.bandwidth() / 2).attr('y', H - 8).attr('text-anchor', 'middle').text((r) => r.label);
+      svg.append('g').selectAll('g').data(series).join('g').attr('fill', (s, i) => K[i].color)
+        .selectAll('rect').data((s) => s).join('rect').attr('x', (d) => x(d.data.label)).attr('width', sw).attr('y', (d) => y(d[1])).attr('height', (d) => Math.max(0, y(d[0]) - y(d[1]))).attr('opacity', (d) => d.data.partial ? .45 : 1);
+      if (G.inc) svg.append('g').selectAll('g').data(iseries).join('g').attr('fill', (s, i) => IK[i].color)
+        .selectAll('rect').data((s) => s).join('rect').attr('x', (d) => x(d.data.label) + sw + 2).attr('width', Math.max(2, x.bandwidth() - sw - 2)).attr('y', (d) => y(d[1])).attr('height', (d) => Math.max(0, y(d[0]) - y(d[1]))).attr('opacity', (d) => d.data.partial ? .45 : 1);
+      if (G.avg) { svg.append('line').attr('x1', ml).attr('x2', W - 8).attr('y1', y(avgV)).attr('y2', y(avgV)).attr('stroke', css('--ink')).attr('stroke-dasharray', '5 4').attr('opacity', .7);
+        svg.append('text').attr('x', W - 10).attr('y', y(avgV) - 5).attr('text-anchor', 'end').style('fill', css('--ink')).text(avgLab); }
+      if (G.net && G.inc) {
+        svg.append('line').attr('x1', ml).attr('x2', W - 8).attr('y1', y(0)).attr('y2', y(0)).attr('stroke', css('--ink')).attr('stroke-width', 1.5);
+        svg.append('path').attr('d', d3.line().x((r) => x(r.label) + x.bandwidth() / 2).y((r) => y(r.inc - r.spent))(rows)).attr('fill', 'none').attr('stroke', '#ff2bd6').attr('stroke-width', 2.5).attr('stroke-linejoin', 'round');
+        svg.append('g').selectAll('circle').data(rows).join('circle').attr('cx', (r) => x(r.label) + x.bandwidth() / 2).attr('cy', (r) => y(r.inc - r.spent)).attr('r', 3.5).attr('fill', (r) => r.inc - r.spent < 0 ? css('--bad') : '#ff2bd6'); }
+      const hl = svg.append('rect').attr('fill', 'none').attr('stroke', css('--ink')).attr('stroke-width', 2).attr('pointer-events', 'none').attr('display', 'none');
+      svg.append('g').selectAll('rect').data(rows).join('rect').attr('x', (r) => x(r.label)).attr('width', x.bandwidth()).attr('y', mt).attr('height', H - mb - mt).attr('fill', 'transparent')
+        .on('mousemove', (ev, r) => { const [px, py] = d3.pointer(ev, svg.node()); const inc = G.inc && px > x(r.label) + sw; const h = hitKey(r, y.invert(py), inc);
+          if (h) hl.attr('display', null).attr('x', inc ? x(r.label) + sw + 2 : x(r.label)).attr('width', inc ? Math.max(2, x.bandwidth() - sw - 2) : sw).attr('y', y(h.hi)).attr('height', Math.max(1, y(h.lo) - y(h.hi))); else hl.attr('display', 'none');
+          showTip(box, ev, tipTitle(r), tipRowsH(r, h, inc)); })
+        .on('mouseleave', () => { hideTip(box); hl.attr('display', 'none'); });
+    } else {
+      const ml = 64, mb = 24, mt = 4;
+      const yb = d3.scaleBand(rows.map((r) => r.label), [mt, H - mb]).padding(0.16);
+      const x = d3.scaleLinear([0, top], [ml, W - 10]).nice();
+      const sh = G.inc ? yb.bandwidth() * 0.68 : yb.bandwidth();
+      svg.append('g').selectAll('line').data(x.ticks(5)).join('line').attr('y1', mt).attr('y2', H - mb).attr('x1', x).attr('x2', x).attr('stroke', css('--line'));
+      svg.append('g').selectAll('text').data(x.ticks(5)).join('text').attr('y', H - 6).attr('x', x).attr('text-anchor', 'middle').text((v) => d3.format('$~s')(v));
+      svg.append('g').selectAll('text').data(rows).join('text').attr('x', ml - 6).attr('y', (r) => yb(r.label) + yb.bandwidth() / 2).attr('dy', '.32em').attr('text-anchor', 'end').text((r) => r.label);
+      svg.append('g').selectAll('g').data(series).join('g').attr('fill', (s, i) => K[i].color)
+        .selectAll('rect').data((s) => s).join('rect').attr('y', (d) => yb(d.data.label)).attr('height', sh).attr('x', (d) => x(d[0])).attr('width', (d) => Math.max(0, x(d[1]) - x(d[0]))).attr('opacity', (d) => d.data.partial ? .45 : 1);
+      if (G.inc) svg.append('g').selectAll('g').data(iseries).join('g').attr('fill', (s, i) => IK[i].color)
+        .selectAll('rect').data((s) => s).join('rect').attr('y', (d) => yb(d.data.label) + sh + 2).attr('height', Math.max(2, yb.bandwidth() - sh - 2)).attr('x', (d) => x(d[0])).attr('width', (d) => Math.max(0, x(d[1]) - x(d[0]))).attr('opacity', (d) => d.data.partial ? .45 : 1);
+      if (G.avg) svg.append('line').attr('y1', mt).attr('y2', H - mb).attr('x1', x(avgV)).attr('x2', x(avgV)).attr('stroke', css('--ink')).attr('stroke-dasharray', '5 4').attr('opacity', .7).append('title').text(avgLab);
+      const hl = svg.append('rect').attr('fill', 'none').attr('stroke', css('--ink')).attr('stroke-width', 2).attr('pointer-events', 'none').attr('display', 'none');
+      svg.append('g').selectAll('rect').data(rows).join('rect').attr('y', (r) => yb(r.label)).attr('height', yb.bandwidth()).attr('x', ml).attr('width', W - 10 - ml).attr('fill', 'transparent')
+        .on('mousemove', (ev, r) => { const [px, py] = d3.pointer(ev, svg.node()); const inc = G.inc && py > yb(r.label) + sh; const h = hitKey(r, x.invert(px), inc);
+          if (h) hl.attr('display', null).attr('y', inc ? yb(r.label) + sh + 2 : yb(r.label)).attr('height', inc ? Math.max(2, yb.bandwidth() - sh - 2) : sh).attr('x', x(h.lo)).attr('width', Math.max(1, x(h.hi) - x(h.lo))); else hl.attr('display', 'none');
+          showTip(box, ev, tipTitle(r), tipRowsH(r, h, inc)); })
+        .on('mouseleave', () => { hideTip(box); hl.attr('display', 'none'); });
+    }
+    groupChart();
+  }
+  const catExp = new Set();
+  let GW = L12, GP = P12; const GL = { cur: 'last 12 months', prev: 'prior 12 months' };
+  const GPER = { w: 'l12', cmp: 'prev', from: Math.max(0, LAST - 11), to: LAST };
+  function gWindow() {
+    const last = LAST; let W;
+    if (GPER.w === 'l1') W = [last];
+    else if (GPER.w === 'l3') W = rng(last - 2, last);
+    else if (GPER.w === 'l12') W = rng(last - 11, last);
+    else if (GPER.w === 'ytd') { const j = M.indexOf(M[last].slice(0, 4) + '-01'); W = rng(j < 0 ? 0 : j, last); }
+    else if (GPER.w === 'all') W = rng(0, last);
+    else if (GPER.w.startsWith('q:')) { const q = GPER.w.slice(2); W = d3.range(NM).filter((i) => qOf(i) === q); }
+    else W = d3.range(Math.min(GPER.from, GPER.to), Math.max(GPER.from, GPER.to) + 1);
+    const n = W.length;
+    const P = GPER.cmp === 'none' ? [] : (GPER.cmp === 'yoy' ? W.map((i) => i - 12) : W.map((i) => i - n)).filter((i) => i >= 0);
+    GW = W; GP = P;
+    GL.cur = spanLab(W) + (W.some(isPartial) ? ' (partial)' : '');
+    GL.prev = GPER.cmp === 'none' ? 'no comparison' : spanLab(P) + (P.length && P.length < n ? ' (only ' + P.length + ' of ' + n + ' months in the data)' : '');
+  }
+  function gControls() {
+    const ps = $('#gPer');
+    if (!ps.options.length) {
+      const qs = [...new Set(d3.range(NM).map(qOf))].reverse();
+      [['l1', 'Last month'], ['l3', 'Last 3 months'], ['l12', 'Last 12 months'], ['ytd', 'Year to date'], ['all', 'All months']].concat(qs.map((q) => ['q:' + q, 'Quarter ' + q])).concat([['custom', 'Custom range']])
+        .forEach(([v, t]) => ps.append(el('option', { value: v, textContent: t })));
+      d3.range(NM).forEach((i) => { $('#gFrom').append(el('option', { value: i, textContent: fmtM(i) })); $('#gTo').append(el('option', { value: i, textContent: fmtM(i) })); });
+      ps.value = GPER.w; $('#gCmp').value = GPER.cmp; $('#gFrom').value = GPER.from; $('#gTo').value = GPER.to;
+      ps.onchange = () => { GPER.w = ps.value; $('#gCustom').hidden = ps.value !== 'custom'; groupChart(); };
+      $('#gCmp').onchange = () => { GPER.cmp = $('#gCmp').value; groupChart(); };
+      $('#gFrom').onchange = () => { GPER.from = +$('#gFrom').value; groupChart(); };
+      $('#gTo').onchange = () => { GPER.to = +$('#gTo').value; groupChart(); };
+      $('#gDebt').onchange = () => setOpt('trueDebt', $('#gDebt').checked);
+    }
+    $('#gDebt').checked = !!ST.opt.trueDebt;
+  }
+  function sparkFor(r, box) {
+    const ser = d3.range(NM).map((i) => d3.sum(r.cs, (c) => (catM[c] || [])[i] || 0));
+    const W = 120, H = 22, x = d3.scaleLinear([0, Math.max(1, NM - 1)], [1, W - 1]), y = d3.scaleLinear([0, d3.max(ser) || 1], [H - 2, 2]);
+    const svg = d3.create('svg').attr('width', W).attr('height', H).attr('viewBox', `0 0 ${W} ${H}`).style('display', 'block').style('cursor', 'crosshair');
+    if (GW.length) svg.append('rect').attr('x', x(d3.min(GW)) - 2).attr('width', Math.max(4, x(d3.max(GW)) - x(d3.min(GW)) + 4)).attr('y', 0).attr('height', H).attr('fill', css('--accent')).attr('opacity', .16);
+    if (GP.length) svg.append('rect').attr('x', x(d3.min(GP)) - 2).attr('width', Math.max(4, x(d3.max(GP)) - x(d3.min(GP)) + 4)).attr('y', 0).attr('height', H).attr('fill', css('--muted')).attr('opacity', .14);
+    svg.append('path').attr('d', d3.line((v, i) => x(i), (v) => y(v))(ser)).attr('fill', 'none').attr('stroke', gColor(r.g)).attr('stroke-width', 1.5);
+    const dot = svg.append('circle').attr('r', 2.5).attr('fill', gColor(r.g)).attr('opacity', 0);
+    svg.on('mousemove', (ev) => { const [px] = d3.pointer(ev); const i = Math.max(0, Math.min(NM - 1, Math.round(x.invert(px)))); dot.attr('cx', x(i)).attr('cy', y(ser[i])).attr('opacity', 1);
+      showTip(box, ev, r.g + ', ' + fmtM(i) + (isPartial(i) ? ' (partial)' : ''), [['Spent', usd(ser[i])], ['Monthly average, ' + GL.cur, usd(GW.length ? d3.sum(GW, (k) => ser[k]) / GW.length : 0)]]); })
+      .on('mouseleave', () => { dot.attr('opacity', 0); hideTip(box); });
+    return svg.node();
+  }
+  function vendorsOfCat(c) { return D.vendors.filter((r) => catOf(r) === c).map((r) => ({ v: dn(r.v), l12: sum(r.m, GW), p12: sum(r.m, GP), m: r.m })).sort((a, b) => b.l12 - a.l12); }
+  function groupChart() {
+    gWindow(); gControls();
+    $('#gTitle').textContent = 'Groups, ' + GL.cur + (GP.length ? ', against ' + GL.prev : '');
+    const box = $('#groupChart'); box.replaceChildren(); box.style.position = 'relative';
+    const gs = groupList().map((g) => { const cs = catsIn(g); return { g, l12: d3.sum(cs, (c) => sum(catM[c], GW)), p12: d3.sum(cs, (c) => sum(catM[c], GP)), cs }; }).sort((a, b) => b.l12 - a.l12);
+    const mx = d3.max(gs, (r) => Math.max(r.l12, r.p12)) || 1;
+    const shade = (base, i, n) => { const h = d3.hsl(base); return d3.hsl(h.h, h.s, Math.max(.28, Math.min(.78, h.l - .2 + .4 * (n > 1 ? i / (n - 1) : .5)))).formatHex(); };
+    const tipRowsFor = (title, l12, p12, parent, top, topLabel) => [[GL.cur, usd(l12)], [GL.prev, usd(p12)], ['Change', fmtPct(pct(l12, p12))], ...(parent ? [['Share of ' + parent.name, d3.format('.0%')(parent.l12 ? l12 / parent.l12 : 0)]] : []),
+      ...(top.length ? [[topLabel, ''], ...top.slice(0, 5).map(([k, v]) => ['  ' + k, usd(v)])] : [])];
+    function segBar(segs, scale, opacity) {
+      const track = el('div', { style: 'position:relative;height:16px' });
+      let x = 0, xp = 0;
+      for (const s of segs) {
+        const w = s.l12 / scale * 100, wp = s.p12 / scale * 100;
+        const a = el('div', { style: `position:absolute;left:${x}%;top:0;height:10px;width:${w}%;background:${s.color};opacity:${opacity};border-right:1px solid var(--panel)` });
+        const b = el('div', { style: `position:absolute;left:${xp}%;top:12px;height:3px;width:${wp}%;background:${s.color};opacity:.45` });
+        for (const n of [a, b]) { n.addEventListener('mousemove', (ev) => { ev.stopPropagation(); showTip(box, ev, s.tip.title, s.tip.rows); }); n.addEventListener('mouseleave', () => hideTip(box)); }
+        track.append(a, b); x += w; xp += wp;
+      }
+      return track;
+    }
+    const list = el('div', { style: 'display:grid;gap:8px' });
+    for (const r of gs) {
+      const on = G.focus ? G.focus === r.g : !G.hidden.has(r.g);
+      const ex = G.expanded.has(r.g) || G.focus === r.g;
+      const base = gColor(r.g);
+      const gTop = r.cs.flatMap((c) => vendorsOfCat(c).map((v) => [v.v, v.l12])).sort((a, b) => b[1] - a[1]);
+      const segs = ex ? r.cs.map((c, i) => { const l = sum(catM[c], GW), p = sum(catM[c], GP);
+          return { l12: l, p12: p, color: pastel(shade(base, i, r.cs.length)), tip: { title: r.g + ' › ' + c, rows: tipRowsFor(c, l, p, { name: r.g, l12: r.l12 }, vendorsOfCat(c).map((v) => [v.v, v.l12]), 'Top merchants, ' + GL.cur) } }; })
+        : [{ l12: r.l12, p12: r.p12, color: pastel(base), tip: { title: r.g, rows: tipRowsFor(r.g, r.l12, r.p12, null, gTop, 'Top merchants, ' + GL.cur) } }];
+      const bar = el('button', { type: 'button', style: 'all:unset;cursor:pointer;display:grid;gap:2px;min-width:0' });
+      bar.setAttribute('aria-expanded', String(ex)); bar.setAttribute('aria-label', (ex ? 'Fold ' : 'Split ') + r.g);
+      bar.append(el('div', { style: 'display:flex;justify-content:space-between;gap:8px;font-size:13px' }, [el('span', { textContent: (ex ? '▾ ' : '▸ ') + r.g }), el('span', { className: 'mono', textContent: usd(r.l12) + '  ' + fmtPct(pct(r.l12, r.p12)) })]),
+        segBar(segs, mx, on ? 1 : .3));
+      bar.onclick = () => { if (G.expanded.has(r.g)) G.expanded.delete(r.g); else G.expanded.add(r.g); G.hidden.delete(r.g); stack(); };
+      const foc = el('button', { type: 'button', textContent: G.focus === r.g ? 'Unfocus' : 'Focus', className: 'seg', style: 'padding:2px 8px;font-size:12px' });
+      foc.onclick = () => { G.focus = G.focus === r.g ? null : r.g; stack(); };
+      const eye = el('button', { type: 'button', textContent: on ? 'Hide' : 'Show', className: 'seg', style: 'padding:2px 8px;font-size:12px' });
+      eye.onclick = () => { G.focus = null; if (G.hidden.has(r.g)) G.hidden.delete(r.g); else G.hidden.add(r.g); stack(); };
+      list.append(el('div', { style: 'display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center' }, [bar, sparkFor(r, box), foc, eye]));
+      if (ex) {
+        const sub = el('div', { style: 'padding-left:20px;display:grid;gap:6px' });
+        const cmx = d3.max(r.cs, (c) => Math.max(sum(catM[c], GW), sum(catM[c], GP))) || 1;
+        r.cs.forEach((c, i) => {
+          const l = sum(catM[c], GW), p = sum(catM[c], GP), col = shade(base, i, r.cs.length), vs = vendorsOfCat(c), cx = catExp.has(c);
+          const topV = vs.slice(0, 6), rest = vs.slice(6);
+          const segs2 = cx ? [...topV.map((v, j) => ({ l12: v.l12, p12: v.p12, color: pastel(shade(col, j, topV.length + 1)),
+              tip: { title: c + ' › ' + v.v, rows: tipRowsFor(v.v, v.l12, v.p12, { name: c, l12: l }, GW.map((k) => [fmtM(k), v.m[k]]).filter((a) => a[1] > 0).sort((a, b) => b[1] - a[1]), 'Biggest months') } })),
+              ...(rest.length ? [{ l12: d3.sum(rest, (v) => v.l12), p12: d3.sum(rest, (v) => v.p12), color: 'var(--muted)', tip: { title: c + ' › everything else', rows: tipRowsFor('', d3.sum(rest, (v) => v.l12), d3.sum(rest, (v) => v.p12), { name: c, l12: l }, rest.map((v) => [v.v, v.l12]), rest.length + ' merchants, top') } }] : [])]
+            : [{ l12: l, p12: p, color: pastel(col), tip: { title: c, rows: tipRowsFor(c, l, p, { name: r.g, l12: r.l12 }, vs.map((v) => [v.v, v.l12]), 'Top merchants, ' + GL.cur) } }];
+          const b2 = el('button', { type: 'button', style: 'all:unset;cursor:pointer;display:grid;gap:2px;min-width:0' });
+          b2.setAttribute('aria-expanded', String(cx)); b2.setAttribute('aria-label', (cx ? 'Fold ' : 'Split ') + c + ' by merchant');
+          b2.append(el('div', { style: 'display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)' }, [el('span', { textContent: (cx ? '▾ ' : '▸ ') + c }), el('span', { className: 'mono', textContent: usd(l) + '  ' + fmtPct(pct(l, p)) })]), segBar(segs2, cmx, 1));
+          b2.onclick = () => { if (catExp.has(c)) catExp.delete(c); else catExp.add(c); groupChart(); };
+          sub.append(b2);
+          if (cx) sub.append(el('div', { className: 'small', style: 'display:flex;flex-wrap:wrap;gap:4px 12px;padding-left:14px' }, segs2.map((s) => el('span', {}, [el('span', { className: 'sw', style: 'background:' + s.color + ';margin-right:4px' }), s.tip.title.split(' › ')[1] + ' ' + usd(s.l12)]))));
+        });
+        list.append(sub);
+      }
+    }
+    box.append(list);
+  }
+  $('#allcats').onclick = () => { G.expanded.clear(); G.hidden.clear(); G.focus = null; stack(); };
+  $$('#orient button').forEach((b) => b.onclick = () => { G.orient = b.dataset.o; $$('#orient button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); stack(); });
+  $('#showInc').onchange = () => { G.inc = $('#showInc').checked; stack(); };
+  const segOpt = (id, key) => $$('#' + id + ' button').forEach((b) => b.onclick = () => { G[key] = b.dataset.v; $$('#' + id + ' button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); stack(); });
+  segOpt('pal', 'pal'); segOpt('incMode', 'incMode');
+  const syncSeg = () => { $$('#orient button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.o === G.orient)));
+    [['pal', 'pal'], ['incMode', 'incMode']].forEach(([id, k]) => $$('#' + id + ' button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.v === G[k])))); $('#optOne').checked = G.one; };
+  syncSeg();
+  [['#optOne', 'one'], ['#optNet', 'net'], ['#optAvg', 'avg'], ['#optPartial', 'hidePartial'], ['#optDebt', 'debtOut']].forEach(([s, k]) => $(s).onchange = () => { G[k] = $(s).checked; if (k === 'one') { ONE = G.one; recompute(); kpis(); } stack(); });
+  // static labels that depend on the data
+  $('#optAvgLab').textContent = (L12.length === 12 ? '12-month' : L12.length + '-month') + ' average';
+  $('#optPartialWrap').hidden = !PARTIAL;
+  if (PARTIAL) $('#optPartialLab').textContent = 'Hide ' + fmtM(NM - 1) + ' (partial)';
+  $('#stackNote').textContent = 'Spending is stacked in groups; the bright bar beside each period is money in. Use the group chart below to drive this one.' + (PARTIAL ? ' ' + fmtM(NM - 1) + ' is partial.' : '');
+  $('#optOneWrap').hidden = $('#oOneWrap').hidden = !D.oneoff.some((k) => RAW_INC[k]);
+  $('#gDebtWrap').hidden = $('#oDebtWrap').hidden = !D.excluded.some((x) => x.countAsDebt);
+
+  // ---------- heatmap ----------
+  let heatScale = 'row';
+  function heat() {
+    const box = $('#heat'); box.querySelectorAll('svg').forEach((n) => n.remove());
+    const P = periods(); const cats = CATS;
+    const cw = per === 'm' ? 34 : 70, rh = 22, ml = 190, mt = 26;
+    const W = ml + P.length * cw + 10, H = mt + cats.length * rh + 6;
+    const svg = d3.select(box).insert('svg', ':first-child').attr('viewBox', `0 0 ${W} ${H}`).style('min-width', W + 'px');
+    const vals = cats.map((c) => P.map((p) => sum(catM[c], p.idx)));
+    const gTop = d3.max(vals.flat()) || 1;
+    const ramp = d3.interpolateRgb(css('--heat0'), css('--accent'));
+    P.forEach((p, j) => { if (per === 'm' && j % 2) return; svg.append('text').attr('x', ml + j * cw + cw / 2).attr('y', 16).attr('text-anchor', 'middle').text(p.label); });
+    cats.forEach((c, i) => {
+      svg.append('text').attr('x', ml - 8).attr('y', mt + i * rh + rh / 2).attr('dy', '.32em').attr('text-anchor', 'end').text(c.length > 28 ? c.slice(0, 27) + '…' : c);
+      const rTop = d3.max(vals[i]) || 1;
+      svg.append('g').selectAll('rect').data(vals[i]).join('rect').attr('x', (d, j) => ml + j * cw + 1).attr('y', mt + i * rh + 1).attr('width', cw - 2).attr('height', rh - 2).attr('rx', 3)
+        .attr('fill', (d) => ramp(Math.sqrt(Math.max(0, d) / (heatScale === 'row' ? rTop : gTop))))
+        .on('mousemove', (ev, d) => { const j = vals[i].indexOf(d); showTip(box, ev, c, [[P[j] ? P[j].label : '', usd(d)]]); })
+        .on('mouseleave', () => hideTip(box));
+    });
+  }
+
+  // ---------- category table ----------
+  let catSort = { k: 'l12', dir: -1 };
+  function catTable() {
+    $('#catNote').textContent = 'Last 12 months (' + spanLab(L12) + ') next to the 12 before (' + spanLab(P12) + '). Type a monthly budget in Target; it saves and is compared with the average of ' + spanLab(L3) + '.';
+    $('#thL3').textContent = L3.length ? d3.utcFormat('%b')(mDate[L3[0]]) + ' to ' + d3.utcFormat('%b')(mDate[L3[L3.length - 1]]) + ' avg' : 'Last 3 avg';
+    const rows = CATS.map((c) => { const a = catM[c]; const l12 = sum(a, L12), p12 = sum(a, P12); return { cat: c, l12, p12, chg: pct(l12, p12) ?? 9, avg: l12 / (L12.length || 1), l3: sum(a, L3) / (L3.length || 1) }; });
+    rows.sort((a, b) => { const x = a[catSort.k], y = b[catSort.k]; return (typeof x === 'string' ? x.localeCompare(y) : x - y) * catSort.dir; });
+    $('#catTable tbody').replaceChildren(...rows.map((r) => {
+      const tgt = ST.bud[r.cat];
+      const inp = el('input', { type: 'number', step: '25', min: '0', value: tgt ?? '', placeholder: Math.round(r.avg) });
+      inp.setAttribute('aria-label', 'Monthly target for ' + r.cat);
+      const st = el('span');
+      const paint = () => { const t = ST.bud[r.cat]; if (t == null || t === '') { st.className = 'pill mut'; st.textContent = 'No target'; return; } const ratio = r.l3 / t; st.className = 'pill ' + (ratio <= 1 ? 'ok' : ratio <= 1.15 ? 'warn' : 'bad'); st.textContent = ratio <= 1 ? 'Under' : 'Over by ' + usd(r.l3 - t); };
+      inp.oninput = () => { const v = inp.value === '' ? null : Number(inp.value); if (v == null) delete ST.bud[r.cat]; else ST.bud[r.cat] = v; paint(); saveBud(); };
+      paint();
+      const chg = pct(r.l12, r.p12); const cc = chg == null ? 'flat' : Math.abs(chg) < .03 ? 'flat' : chg > 0 ? 'up' : 'down';
+      return el('tr', {}, [el('td', {}, [el('span', { className: 'sw', style: 'background:' + colorOf(r.cat) + ';margin-right:6px' }), r.cat]), el('td', { className: 'n', textContent: usd(r.l12) }), el('td', { className: 'n', textContent: usd(r.p12) }),
+        el('td', { className: 'n ' + cc, textContent: fmtPct(chg) }), el('td', { className: 'n', textContent: usd(r.avg) }), el('td', { className: 'n', textContent: usd(r.l3) }), el('td', { className: 'n' }, inp), el('td', {}, st)]);
+    }));
+  }
+  $$('#catTable th button').forEach((b) => b.onclick = () => { const k = b.dataset.k; catSort = { k, dir: catSort.k === k ? -catSort.dir : (k === 'cat' ? 1 : -1) }; catTable(); });
+
+  // ---------- vendors ----------
+  let vSort = { k: 'l12', dir: -1 };
+  const L12SET = new Set(L12);
+  function spark(a) {
+    const w = NM * 4, h = 22, mx = d3.max(a) || 1;
+    const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', `0 0 ${w} ${h}`); s.setAttribute('width', w); s.setAttribute('height', h);
+    a.forEach((v, i) => { if (!(v > 0)) return; const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect'); const bh = Math.max(1, v / mx * (h - 2)); r.setAttribute('x', i * 4); r.setAttribute('y', h - bh); r.setAttribute('width', 3); r.setAttribute('height', bh); r.setAttribute('fill', L12SET.has(i) ? css('--accent') : css('--muted')); s.append(r); });
+    return s;
+  }
+  function centersOf(r) {
+    const t = tagsOf(r), find = (x) => CENTERS.find((cc) => cc.id.toLowerCase() === String(x).toLowerCase());
+    const out = new Set(t.filter((x) => x.startsWith('#')).map((x) => (find(x) || { id: x }).id));
+    centerRulesList().forEach(([c, ctr]) => { if (catOf(r) === c && !t.includes('-' + ctr.toLowerCase())) out.add((find(ctr) || { id: ctr }).id); });
+    CENTERS.forEach((c) => { if (c.re && c.re.test(r.v) && !t.includes('-' + c.id.toLowerCase())) out.add(c.id); });
+    if (DEP && DEP.center && t.includes(DEP_TAG)) out.add(DEP.center);
+    return [...out].join(', ');
+  }
+  function patternOf(r) {
+    const t = tagsOf(r); for (const p of ['one-off', 'sporadic', 'recurring']) if (t.includes(p)) return p[0].toUpperCase() + p.slice(1);
+    const mm = rng(0, LAST).filter((i) => r.m[i] > 0);
+    if (mm.length <= 1) return 'One-off';
+    const span = mm[mm.length - 1] - mm[0] + 1;
+    return mm.length >= 4 && mm.length / span >= 0.6 && (LAST - mm[mm.length - 1]) <= 2 ? 'Recurring' : 'Sporadic';
+  }
+  function vendorInfo(r, c) {
+    const pl = D.places.find((p) => (p.keys || []).includes(r.v));
+    const tw = c === T_WORK ? 'work' : c === T_PERS ? 'personal' : '';
+    const where = pl ? pl.name + (tw ? ', ' + tw : '') : (tw ? (tw === 'work' ? 'Work trip' : 'Personal trip') : '');
+    const t = tagsOf(r), b = new Set();
+    D.hobbies.forEach((h) => { if ((h.re && rx(h.re).test(r.v)) || t.includes(String(h.id).toLowerCase())) b.add(h.name); });
+    const mm = d3.range(NM).filter((i) => r.m[i] > 0), f = (i) => d3.utcFormat("%b '%y")(mDate[i]);
+    return { paid: r.ac ? 'card ' + String(r.ac).split('/').join(', ') : '', where, belongs: [...b].join(', '), active: mm.length ? (mm.length === 1 ? f(mm[0]) : f(mm[0]) + ' to ' + f(mm[mm.length - 1])) : '' };
+  }
+  function vendorRows() {
+    const q = $('#vq').value.toLowerCase(), fc = $('#vcat').value;
+    let rows = D.vendors.map((r) => ({ r, v: dn(r.v), c: catOf(r), l12: sum(r.m, L12), p12: sum(r.m, P12), tags: ((ST.ov[vkey(r)] || {}).tags || ''), centers: centersOf(r), pat: patternOf(r) }));
+    const pf = $('#vpat').value; if (pf) rows = rows.filter((o) => o.pat === pf);
+    rows.forEach((o) => o.chg = o.p12 ? (o.l12 - o.p12) / o.p12 : (o.l12 ? 9 : 0));
+    if (fc) rows = rows.filter((o) => o.c === fc);
+    if (q) rows = rows.filter((o) => (o.v + ' ' + o.c + ' ' + o.tags).toLowerCase().includes(q));
+    rows.sort((a, b) => { const x = a[vSort.k], y = b[vSort.k]; return (typeof x === 'string' ? x.localeCompare(y) : x - y) * vSort.dir; });
+    return rows.slice(0, Number($('#vlim').value));
+  }
+  function vendors() {
+    const hob = D.hobbies.map((h) => String(h.id).toLowerCase());
+    $('#vNote').textContent = 'Every merchant in the data. Change a category or add tags and it saves; totals across the page update. Tag a travel vendor "work" or "personal" to move it; tag "one-off", "sporadic" or "recurring" to set its pattern; a center id such as ' + (CENTERS[0] ? '"' + CENTERS[0].id + '"' : '"#Center"') + ' adds it to that center.' + (hob.length ? ' Tags that name a hobby (' + hob.join(', ') + ') add that vendor to the hobby.' : '') + (DEP ? ' "' + DEP_TAG + '" adds it to the ' + DEP.label + ' tab.' : '');
+    $('#thSpark').textContent = NM + ' months';
+    const cats = allCats();
+    const sel = $('#vcat'); const cur = sel.value; sel.replaceChildren(el('option', { value: '', textContent: 'All categories' }), ...cats.map((c) => el('option', { value: c, textContent: c }))); sel.value = cur;
+    const vbox = $('#vTable').closest('.card'); vbox.style.position = 'relative';
+    $('#vTable tbody').replaceChildren(...vendorRows().map((o) => {
+      const k = vkey(o.r);
+      const cs = el('select'); cs.setAttribute('aria-label', 'Category for ' + o.v);
+      cats.forEach((c) => cs.append(el('option', { value: c, textContent: c }))); cs.value = o.c;
+      cs.onchange = () => { const ov = ST.ov[k] || (ST.ov[k] = {}); if (cs.value === o.r.c) delete ov.c; else ov.c = cs.value; if (!ov.c && !ov.tags) delete ST.ov[k]; saveOv(); refreshAll(); };
+      const tg = el('input', { type: 'text', value: o.tags, placeholder: 'tags' }); tg.setAttribute('aria-label', 'Tags for ' + o.v);
+      tg.onchange = () => { const ov = ST.ov[k] || (ST.ov[k] = {}); ov.tags = tg.value.trim(); if (!ov.tags) delete ov.tags; if (!ov.c && !ov.tags) delete ST.ov[k]; saveOv(); refreshAll(); };
+      const cc = Math.abs(o.chg) < .03 ? 'flat' : o.chg > 0 ? 'up' : 'down';
+      const info = vendorInfo(o.r, o.c);
+      const nameTd = el('td', { textContent: o.v, style: 'cursor:help;text-decoration:underline dotted;text-underline-offset:3px', onmousemove: (ev) => chargeTip(vbox, ev, o.r, o.v), onmouseleave: () => hideTip(vbox) });
+      return el('tr', {}, [nameTd, el('td', {}, cs), el('td', { className: 'small mono vcardcol', style: 'white-space:nowrap', textContent: info.paid }), el('td', { className: 'small', textContent: info.where }),
+        el('td', { className: 'small', textContent: o.centers }), el('td', { className: 'small', textContent: info.belongs }), el('td', { className: 'small', style: 'white-space:nowrap', textContent: o.pat }), el('td', { className: 'small mono', style: 'white-space:nowrap', textContent: info.active }), el('td', { className: 'n', textContent: usd(o.l12) }), el('td', { className: 'n', textContent: usd(o.p12) }),
+        el('td', { className: 'n ' + cc, textContent: o.p12 ? fmtPct(o.chg) : (o.l12 ? 'new' : '') }), el('td', {}, spark(o.r.m)), el('td', {}, tg)]);
+    }));
+  }
+  ['#vq', '#vcat', '#vlim', '#vpat'].forEach((s) => $(s).addEventListener('input', vendors));
+  const cardCol = () => { const on = !!ST.opt.showCard; $('#vcard').checked = on; let st = $('#vcardStyle'); if (!st) { st = el('style', { id: 'vcardStyle' }); document.head.append(st); } st.textContent = on ? '' : '.vcardcol{display:none}'; };
+  cardCol(); $('#vcard').onchange = () => { ST.opt.showCard = $('#vcard').checked; persist('settings/options', ST.opt, '#optSave'); cardCol(); };
+
+  // ---------- renames ----------
+  function renames() {
+    const names = [...new Set(BASE_V.map((r) => r.v))].sort();
+    $('#rnList').replaceChildren(...names.map((n) => el('option', { value: n })));
+    const ent = Object.entries(ST.ren).sort((a, b) => a[0].localeCompare(b[0]));
+    $('#rnTable tbody').replaceChildren(...(ent.length ? ent.map(([from, to]) => {
+      const inp = el('input', { type: 'text', value: to }); inp.setAttribute('aria-label', 'New name for ' + from);
+      inp.onchange = () => { if (inp.value.trim()) ST.ren[from] = inp.value.trim(); else delete ST.ren[from]; saveOv('#rnSave'); applyOpts(); refreshAll(); };
+      const rm = el('button', { type: 'button', textContent: 'Undo', className: 'seg', style: 'padding:2px 10px;font-size:12px' });
+      rm.onclick = () => { delete ST.ren[from]; saveOv('#rnSave'); applyOpts(); refreshAll(); };
+      return el('tr', {}, [el('td', { textContent: from }), el('td', {}, inp), el('td', {}, rm)]);
+    }) : [el('tr', {}, el('td', { colSpan: 3, className: 'small', textContent: 'No renames yet. Pick a vendor above, type the name to show, and select Rename.' }))]));
+  }
+  $('#rnAdd').onclick = () => {
+    const from = $('#rnFrom').value.trim(), to = $('#rnTo').value.trim();
+    if (!from || !to) { saved('#rnSave', 'Pick a vendor and type the new name first.'); return; }
+    if (!BASE_V.some((r) => r.v === from)) { saved('#rnSave', 'No vendor is named exactly "' + from + '". Pick one from the list as you type.'); return; }
+    ST.ren[from] = to; $('#rnFrom').value = ''; $('#rnTo').value = ''; saveOv('#rnSave'); applyOpts(); refreshAll();
+  };
+  $$('#vTable th button').forEach((b) => b.onclick = () => { const k = b.dataset.k; vSort = { k, dir: vSort.k === k ? -vSort.dir : (k === 'v' ? 1 : -1) }; vendors(); });
+
+  // ---------- cash flow ----------
+  function cashflow() {
+    if (D.notes && D.notes.cashflow) $('#cashNote').textContent = 'Money in (above the line) and spending (below) by month, with the net. One-time items are drawn separately so they don\'t hide the run rate. ' + D.notes.cashflow;
+    const box = $('#cash'); box.querySelectorAll('svg').forEach((n) => n.remove());
+    const inc = incTotal(true), one = incTotal(false).map((v, i) => v - inc[i]);
+    const CAP = Math.max(1, 2 * (d3.max(inc) || 0), d3.max(total) || 0);
+    const W = Math.max(320, box.clientWidth), H = 320, ml = 58, mb = 26, mt = 10;
+    const x = d3.scaleBand(M, [ml, W - 8]).padding(0.2);
+    const mxIn = d3.max(inc.map((v, i) => v + Math.min(one[i], CAP))) || 1, mxOut = d3.max(total) || 1;
+    const y = d3.scaleLinear([-mxOut, mxIn], [H - mb, mt]).nice();
+    const svg = d3.select(box).insert('svg', ':first-child').attr('viewBox', `0 0 ${W} ${H}`);
+    svg.append('g').selectAll('line').data(y.ticks(6)).join('line').attr('x1', ml).attr('x2', W - 8).attr('y1', y).attr('y2', y).attr('stroke', css('--line'));
+    svg.append('g').selectAll('text').data(y.ticks(6)).join('text').attr('x', ml - 6).attr('y', y).attr('dy', '.32em').attr('text-anchor', 'end').text((v) => d3.format('$~s')(v));
+    const step = Math.ceil(M.length / Math.max(1, Math.floor((W - ml) / 52)));
+    svg.append('g').selectAll('text').data(M.filter((m, i) => i % step === 0)).join('text').attr('x', (m) => x(m) + x.bandwidth() / 2).attr('y', H - 8).attr('text-anchor', 'middle').text((m) => d3.utcFormat("%b '%y")(new Date(m + '-01T00:00:00Z')));
+    svg.append('g').selectAll('rect').data(M).join('rect').attr('x', x).attr('width', x.bandwidth()).attr('y', (m, i) => y(inc[i])).attr('height', (m, i) => y(0) - y(inc[i])).attr('fill', css('--ok')).attr('rx', 2);
+    svg.append('g').selectAll('rect').data(M).join('rect').attr('x', x).attr('width', x.bandwidth()).attr('y', (m, i) => y(inc[i] + Math.min(one[i], CAP))).attr('height', (m, i) => y(inc[i]) - y(inc[i] + Math.min(one[i], CAP))).attr('fill', css('--warn')).attr('rx', 2);
+    svg.append('g').selectAll('rect').data(M).join('rect').attr('x', x).attr('width', x.bandwidth()).attr('y', y(0)).attr('height', (m, i) => y(-total[i]) - y(0)).attr('fill', css('--bad')).attr('opacity', .75).attr('rx', 2);
+    const net = M.map((m, i) => inc[i] - total[i]);
+    svg.append('path').attr('d', d3.line().x((d, i) => x(M[i]) + x.bandwidth() / 2).y((d) => y(d))(net)).attr('fill', 'none').attr('stroke', css('--ink')).attr('stroke-width', 2).attr('stroke-linejoin', 'round');
+    svg.append('line').attr('x1', ml).attr('x2', W - 8).attr('y1', y(0)).attr('y2', y(0)).attr('stroke', css('--muted'));
+    svg.append('g').selectAll('rect').data(M).join('rect').attr('x', x).attr('width', x.bandwidth()).attr('y', mt).attr('height', H - mb - mt).attr('fill', 'transparent')
+      .on('mousemove', (ev, m) => { const i = M.indexOf(m); showTip(box, ev, d3.utcFormat('%B %Y')(mDate[i]) + (isPartial(i) ? ' (partial)' : ''), [['Money in', usd(inc[i]), css('--ok')], ['One-time', usd(one[i]), css('--warn')], ['Spent', usd(total[i]), css('--bad')], ['Net (without one-time)', usd(net[i])]]); })
+      .on('mouseleave', () => hideTip(box));
+    one.forEach((v, i) => { if (v > CAP) svg.append('text').attr('x', x(M[i]) + x.bandwidth() / 2).attr('y', y(mxIn) + 10).attr('text-anchor', 'middle').text(usd(v) + ' one-time'); });
+    const l = sum(inc, L12), p = sum(inc, P12), o12 = sum(one, L12);
+    const oneNames = D.oneoff.filter((k) => RAW_INC[k] && sum(RAW_INC[k], L12) > 0);
+    $('#cashTiles').replaceChildren(
+      el('div', { className: 'tile' }, [el('div', { className: 'lab', textContent: 'Money in, last 12 (recurring)' }), el('div', { className: 'big', textContent: usd(l) }), el('div', { className: 'cmp', textContent: 'vs ' + usd(p) + ' prior 12' })]),
+      el('div', { className: 'tile' }, [el('div', { className: 'lab', textContent: 'One-time money in, last 12' }), el('div', { className: 'big', textContent: usd(o12) }), el('div', { className: 'cmp', textContent: oneNames.length ? oneNames.join(', ') : 'None in this period' })]),
+      el('div', { className: 'tile' }, [el('div', { className: 'lab', textContent: 'Spent, last 12' }), el('div', { className: 'big', textContent: usd(sum(total, L12)) }), el('div', { className: 'cmp', textContent: 'vs ' + usd(sum(total, P12)) + ' prior 12' })]),
+      el('div', { className: 'tile' }, [el('div', { className: 'lab', textContent: 'Net, last 12 (without one-time)' }), el('div', { className: 'big', textContent: usd(l - sum(total, L12)) }), el('div', { className: 'cmp', textContent: 'Recurring money in minus spending' })]));
+    const cards = ((D.balances && D.balances.cards) || []).slice().sort((a, b) => b[1] - a[1]);
+    $('#cardsCard').hidden = !cards.length;
+    $('#cardsTitle').textContent = 'Card balances' + (D.balances && D.balances.asOf ? ' (as of ' + D.balances.asOf + ')' : '');
+    $('#cardsT tbody').replaceChildren(...cards.map(([n, v]) => el('tr', {}, [el('td', { textContent: n }), el('td', { className: 'n', textContent: usd2(v) })])), el('tr', {}, [el('td', { textContent: 'Total on cards' }), el('td', { className: 'n', textContent: usd2(d3.sum(cards, (c) => c[1])) })]));
+    $('#intCard').hidden = !D.interest.length;
+    $('#intT tbody').replaceChildren(...D.interest.slice().sort((a, b) => b.fees - a.fees).map((r) => el('tr', {}, [el('td', { textContent: r.account }), el('td', { className: 'n', textContent: usd(r.fees) })])));
+  }
+
+  // ---------- projection ----------
+  const REC = rng(LAST - 5, LAST);
+  const incRec = incTotal(true);
+  const A = { start: Math.round(d3.sum((D.balances && D.balances.checking) || [], (c) => c[1])), inc: Math.round(d3.mean(REC, (i) => incRec[i]) || 0), sp: Math.round(d3.mean(REC, (i) => total[i]) || 0), int: +((D.projection || {}).interestSaving || 0), known: D.known.map((k) => ({ ...k, on: !k.uncertain })) };
+  $('#a-start').value = A.start; $('#a-inc').value = A.inc; $('#a-sp').value = A.sp; $('#a-int').value = A.int;
+  [['#a-start', 'start'], ['#a-inc', 'inc'], ['#a-sp', 'sp'], ['#a-int', 'int']].forEach(([s, k]) => $(s).addEventListener('input', () => { A[k] = Number($(s).value) || 0; proj(); }));
+  $('#known').replaceChildren(...A.known.map((k, i) => { const cb = el('input', { type: 'checkbox', checked: k.on, id: 'kn' + i }); cb.onchange = () => { k.on = cb.checked; proj(); };
+    const lab = el('label', { className: 'chk', htmlFor: 'kn' + i }); lab.append(cb, k.name + ' ' + (k.amount > 0 ? '+' : '') + usd(k.amount) + ' (' + d3.utcFormat('%b %Y')(new Date(k.month + '-01T00:00:00Z')) + ')'); return lab; }));
+  function proj() {
+    const box = $('#proj'); box.querySelectorAll('svg').forEach((n) => n.remove());
+    const start = d3.utcMonth.offset(mDate[LAST], 1);
+    const pm = d3.range(12).map((i) => d3.utcMonth.offset(start, i));
+    let cash = A.start; const pts = [{ d: d3.utcDay.offset(pm[0], -1), v: cash, ev: [] }];
+    pm.forEach((d) => { const key = d3.utcFormat('%Y-%m')(d); const ev = A.known.filter((k) => k.on && k.month === key); cash += A.inc - A.sp + A.int + d3.sum(ev, (k) => k.amount); pts.push({ d: d3.utcMonth.offset(d, 1), v: cash, ev }); });
+    const W = Math.max(320, box.clientWidth), H = 280, ml = 64, mb = 26, mt = 12;
+    const x = d3.scaleUtc([pts[0].d, pts[pts.length - 1].d], [ml, W - 12]);
+    const ext = d3.extent(pts, (p) => p.v); const y = d3.scaleLinear([Math.min(0, ext[0]), Math.max(0, ext[1])], [H - mb, mt]).nice();
+    const svg = d3.select(box).insert('svg', ':first-child').attr('viewBox', `0 0 ${W} ${H}`);
+    svg.append('g').selectAll('line').data(y.ticks(5)).join('line').attr('x1', ml).attr('x2', W - 12).attr('y1', y).attr('y2', y).attr('stroke', css('--line'));
+    svg.append('g').selectAll('text').data(y.ticks(5)).join('text').attr('x', ml - 6).attr('y', y).attr('dy', '.32em').attr('text-anchor', 'end').text((v) => d3.format('$~s')(v));
+    svg.append('g').selectAll('text').data(x.ticks(6)).join('text').attr('x', x).attr('y', H - 8).attr('text-anchor', 'middle').text(d3.utcFormat("%b '%y"));
+    svg.append('line').attr('x1', ml).attr('x2', W - 12).attr('y1', y(0)).attr('y2', y(0)).attr('stroke', css('--bad')).attr('stroke-dasharray', '4 4');
+    svg.append('path').attr('d', d3.line().x((p) => x(p.d)).y((p) => y(p.v))(pts)).attr('fill', 'none').attr('stroke', css('--accent')).attr('stroke-width', 2.5).attr('stroke-linejoin', 'round');
+    svg.append('g').selectAll('circle').data(pts).join('circle').attr('cx', (p) => x(p.d)).attr('cy', (p) => y(p.v)).attr('r', (p) => p.ev.length ? 5 : 3).attr('fill', (p) => p.v < 0 ? css('--bad') : css('--accent'))
+      .on('mousemove', (ev, p) => showTip(box, ev, d3.utcFormat('%b %d, %Y')(p.d), [['Cash', usd(p.v)], ...p.ev.map((k) => [k.name, usd(k.amount)])])).on('mouseleave', () => hideTip(box));
+    const end = pts[pts.length - 1].v;
+    svg.append('text').attr('x', W - 14).attr('y', y(end) - 8).attr('text-anchor', 'end').style('fill', css('--ink')).text(d3.utcFormat('%b %Y')(pm[11]) + ': ' + usd(end));
+  }
+
+  // ---------- subscriptions ----------
+  let sSort = { k: 'status', dir: 1 };
+  const STREAM = rx(D.subsStreamingRegex || 'stream|music|video|app|game|play');
+  function subs() {
+    const act = D.subs.filter((s) => s.status === 'Active');
+    const m = act.filter((s) => s.cadence === 'Monthly');
+    const st = m.filter((s) => STREAM.test(s.category || '') || STREAM.test(s.service || ''));
+    const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const dup = d3.groups(act, (s) => norm(s.service)).filter(([, g]) => g.length > 1);
+    $('#subTiles').replaceChildren(
+      el('div', { className: 'tile' }, [el('div', { className: 'lab', textContent: 'Monthly subscriptions running' }), el('div', { className: 'big', textContent: usd2(d3.sum(m, (s) => +s.amount)) }), el('div', { className: 'cmp', textContent: m.length + ' services, ' + usd(d3.sum(m, (s) => +s.amount) * 12) + ' a year' })]),
+      el('div', { className: 'tile' }, [el('div', { className: 'lab', textContent: 'Streaming and apps only' }), el('div', { className: 'big', textContent: usd2(d3.sum(st, (s) => +s.amount)) }), el('div', { className: 'cmp', textContent: st.length ? st.slice(0, 5).map((s) => s.service).join(', ') : 'None found' })]),
+      el('div', { className: 'tile' }, [el('div', { className: 'lab', textContent: 'Likely duplicates' }), el('div', { className: 'big', textContent: String(dup.length) }), el('div', { className: 'cmp', textContent: dup.length ? dup.map(([, g]) => g[0].service + ' x' + g.length).join('; ') : 'Same service billed twice' })]));
+    const q = $('#sq').value.toLowerCase(), sf = $('#sst').value; const ord = { Active: 0, Check: 1, Stopped: 2 };
+    let rows = D.subs.filter((s) => (!sf || s.status === sf) && (!q || (s.service + ' ' + s.paid_with + ' ' + s.note + ' ' + s.category).toLowerCase().includes(q)));
+    rows.sort((a, b) => { if (sSort.k === 'status') return (((ord[a.status] ?? 3) - (ord[b.status] ?? 3)) || (b.amount - a.amount)) * sSort.dir; const x = a[sSort.k], y = b[sSort.k]; return (typeof x === 'string' ? x.localeCompare(y) : x - y) * sSort.dir; });
+    $('#sTable tbody').replaceChildren(...(rows.length ? rows.map((s) => el('tr', {}, [el('td', { textContent: s.service }), el('td', { className: 'n', textContent: usd2(+s.amount) }), el('td', { textContent: s.cadence }), el('td', { className: 'mono', textContent: s.last_charge }),
+      el('td', { textContent: s.paid_with }), el('td', {}, el('span', { className: 'pill ' + (s.status === 'Active' ? 'ok' : s.status === 'Check' ? 'warn' : 'mut'), textContent: s.status })), el('td', { className: 'small', textContent: s.note })]))
+      : [el('tr', {}, el('td', { colSpan: 7, className: 'small', textContent: 'No recurring charges found.' }))]));
+  }
+  ['#sq', '#sst'].forEach((s) => $(s).addEventListener('input', subs));
+  $$('#sTable th button').forEach((b) => b.onclick = () => { const k = b.dataset.k; sSort = { k, dir: sSort.k === k ? -sSort.dir : 1 }; subs(); });
+
+  // ---------- hobbies ----------
+  function hobbyRows(h) {
+    const re = h.re ? rx(h.re) : null, id = String(h.id).toLowerCase();
+    return D.vendors.filter((r) => { const t = tagsOf(r); if (t.includes('-' + id)) return false; return t.includes(id) || (re && re.test(r.v)); });
+  }
+  function hobbies() {
+    const QS = d3.groups(d3.range(NM), qOf);
+    $('#hobGrid').replaceChildren(...D.hobbies.map((h) => {
+      const rows = hobbyRows(h); const m = new Array(NM).fill(0); rows.forEach((r) => r.m.forEach((v, i) => m[i] += v));
+      const l12 = sum(m, L12), p12 = sum(m, P12);
+      const byV = d3.rollups(rows, (rs) => d3.sum(rs, (r) => d3.sum(r.m)), (r) => dn(r.v)).sort((a, b) => b[1] - a[1]).slice(0, 6);
+      const chg = pct(l12, p12);
+      const who = el('input', { type: 'text', value: ST.who[h.id] ?? (h.who || '') }); who.setAttribute('aria-label', 'Who this hobby belongs to: ' + h.name);
+      who.onchange = () => { ST.who[h.id] = who.value; saveNotes('#hobSave'); };
+      const q = QS.map(([, idx]) => sum(m, idx));
+      const mx = d3.max(q) || 1;
+      const bars = el('div', { style: 'display:flex;gap:3px;align-items:flex-end;height:36px' }, q.map((v, i) => el('div', { title: QS[i][0] + ': ' + usd(v), style: `flex:1;height:${Math.max(2, v / mx * 36)}px;border-radius:2px;background:${QS[i][1].some((j) => L12SET.has(j)) ? 'var(--accent)' : 'var(--line)'}` })));
+      return el('div', { className: 'card hob' }, [
+        el('div', { className: 'head' }, [el('h3', { textContent: h.name }), el('span', { className: 'small', textContent: rows.length + ' merchants' })]),
+        el('div', { className: 'head' }, [el('span', { className: 'amt', textContent: usd(l12) }), el('span', { className: 'small ' + (chg == null ? '' : chg > 0 ? 'up' : 'down'), textContent: 'last 12 vs ' + usd(p12) + ' prior (' + fmtPct(chg) + ')' })]),
+        bars, el('span', { className: 'small', textContent: 'By quarter, ' + QS[0][0] + ' to ' + QS[QS.length - 1][0] }),
+        el('ul', {}, byV.map(([v, a]) => el('li', { textContent: v + ': ' + usd(a) + ' in all ' + NM + ' months' }))),
+        h.note ? el('p', { className: 'small', textContent: h.note, style: 'margin:0' }) : null,
+        el('label', {}, ['Whose', who])]);
+    }));
+  }
+
+  // ---------- dependent ----------
+  function depItems() {
+    const E = DEP, items = [];
+    for (const it of (E.items || [])) items.push({ d: it.d, w: dn(it.w), a: +it.a, why: it.why || '', cat: it.cat });
+    const vcat = new Map(); for (const r of BASE_V) if (!vcat.has(r.v)) vcat.set(r.v, mapCat(r.c));
+    if (E.matchRegex) { const re = rx(E.matchRegex);
+      for (const t of TX) if (re.test(t.v) && (!E.from || t.d >= E.from) && (!E.to || t.d <= E.to)) items.push({ d: t.d, w: dn(t.v), a: t.a, why: E.matchWhy || 'Matched by merchant', cat: vcat.get(t.v) }); }
+    if (E.tripShare && E.tripShare.matchRegex) { const re = rx(E.tripShare.matchRegex), sh = +E.tripShare.share || 0;
+      for (const t of TX) if (re.test(t.v)) items.push({ d: t.d, w: dn(t.v) + ' (' + d3.format('.0%')(sh) + ' of ' + usd2(t.a) + ')', a: t.a * sh, why: E.tripShare.why || 'a share of a family trip', cat: 'Travel' }); }
+    for (const r of D.vendors) { const tg = tagsOf(r); if (!tg.includes(DEP_TAG) && !(E.center && tg.includes(String(E.center).toLowerCase()))) continue; items.push({ d: 'tagged', w: dn(r.v) + ' (all charges)', a: d3.sum(r.m), why: 'Tagged on the Vendors tab', cat: 'Tagged' }); }
+    items.sort((a, b) => String(b.d).localeCompare(String(a.d)));
+    return items;
+  }
+  function dependent() {
+    const E = DEP; const items = depItems(); const tot = d3.sum(items, (i) => i.a);
+    $('#depTitle').textContent = 'Spending for ' + E.label;
+    $('#depNote').textContent = (E.note ? E.note + ' ' : '') + 'Tag any other vendor "' + DEP_TAG + '"' + (E.center ? ' or "' + E.center + '"' : '') + ' on the Vendors tab to add it.';
+    $('#depFoot').textContent = E.footnote || '';
+    const byCat = d3.rollups(items, (v) => d3.sum(v, (i) => i.a), (i) => i.cat || 'Other').sort((a, b) => b[1] - a[1]);
+    const lo = E.leftOut && E.leftOut.amount ? '; ' + usd(E.leftOut.amount) + ' left out (' + (E.leftOut.label || 'not tracked') + ')' : '';
+    $('#depTiles').replaceChildren(
+      el('div', { className: 'tile' }, [el('div', { className: 'lab', textContent: 'Tracked for ' + E.label + ' so far' }), el('div', { className: 'big', textContent: usd(tot) }), el('div', { className: 'cmp', textContent: items.length + ' items' + lo })]),
+      ...byCat.slice(0, 5).map(([c, v]) => el('div', { className: 'tile' }, [el('div', { className: 'lab', textContent: c }), el('div', { className: 'big', textContent: usd(v) }), el('div', { className: 'cmp', textContent: d3.format('.0%')(tot ? v / tot : 0) + ' of the total' })])));
+    $('#eTable tbody').replaceChildren(...(items.length ? items.map((i) => el('tr', {}, [el('td', { className: 'mono', textContent: i.d }), el('td', { textContent: i.w }), el('td', { className: 'n', textContent: usd2(i.a) }), el('td', { className: 'small', textContent: (i.cat ? i.cat + ': ' : '') + i.why })]))
+      : [el('tr', {}, el('td', { colSpan: 4, className: 'small', textContent: 'Nothing matched yet.' }))]));
+  }
+
+  // ---------- travel ----------
+  const MAPDATA = D.mapData || {};
+  const getJSON = async (urls) => { for (const u of urls) { try { const r = await fetch(u); if (r.ok) return await r.json(); } catch (e) { /* try the next one */ } } throw new Error('map data'); };
+  async function ensureMap() {
+    if (ensureMap.done) return true;
+    try {
+      const [st, wo] = await Promise.all([
+        getJSON([MAPDATA.states, 'states-10m.json', 'https://cdn.jsdelivr.net/npm/us-atlas@3.0.1/states-10m.json'].filter(Boolean)),
+        getJSON([MAPDATA.countries, 'countries-50m.json', 'https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json'].filter(Boolean))]);
+      const states = topojson.feature(st, st.objects.states).features.map((f) => ({ ...f, properties: { name: f.properties.name } }));
+      const countries = topojson.feature(wo, wo.objects.countries).features.filter((f) => f.id !== '840').map((f, i) => ({ ...f, properties: { name: (f.properties && f.properties.name ? f.properties.name : 'c' + i) + ' ' } }));
+      echarts.registerMap('wstates', { type: 'FeatureCollection', features: countries.concat(states) });
+      ensureMap.done = true; return true;
+    } catch (e) { return false; }
+  }
+  async function travel() {
+    const pl = D.places;
+    $('#tTable tbody').replaceChildren(...pl.filter((p) => !p.home).sort((a, b) => b.spend - a.spend).map((p) => el('tr', {}, [el('td', { textContent: p.name + (p.work ? ' (work)' : '') }), el('td', { textContent: p.when || '' }), el('td', { className: 'n', textContent: usd(p.spend || 0) })])));
+    const box = $('#map');
+    if (!window.echarts || !window.topojson) { box.textContent = 'The map library did not load.'; return; }
+    if (!(await ensureMap())) { box.textContent = 'The map outlines did not load. Put states-10m.json and countries-50m.json beside this page, or check the internet connection.'; return; }
+    const ch = echarts.init(box);
+    const mx = d3.max(pl, (p) => p.spend) || 1;
+    const home = pl.find((p) => p.home);
+    const center = D.mapCenter || (home ? [home.lon, home.lat] : [d3.mean(pl, (p) => p.lon), d3.mean(pl, (p) => p.lat)]);
+    const colorFor = (p) => p.home ? css('--ink') : p.planned ? css('--warn') : p.work ? '#4f86c6' : css('--accent');
+    const lineFrom = (list) => home ? list.filter((p) => !p.home && !p.route).map((p) => ({ coords: [[home.lon, home.lat], [p.lon, p.lat]] })) : [];
+    const ROUTE = Array.isArray(D.route) && D.route.length > 1 ? D.route : null;
+    ch.setOption({
+      tooltip: { trigger: 'item', formatter: (p) => p.data && p.data.name ? `${p.data.name}<br>${p.data.when || ''}<br>${p.data.home ? 'Home' : usd(p.data.spend || 0)}` : '' },
+      geo: { map: 'wstates', roam: true, center, zoom: +D.mapZoom || 4, scaleLimit: { min: 1, max: 60 }, itemStyle: { areaColor: css('--heat0'), borderColor: css('--muted'), borderWidth: 0.6 }, emphasis: { itemStyle: { areaColor: css('--accent-soft') }, label: { show: false } } },
+      series: [{ type: 'effectScatter', coordinateSystem: 'geo', rippleEffect: { scale: 2.5, brushType: 'stroke' },
+        data: pl.map((p) => ({ name: p.name + (p.work ? ' (work)' : ''), value: [p.lon, p.lat, p.spend], when: p.when, spend: p.spend, home: p.home, itemStyle: { color: colorFor(p) } })),
+        symbolSize: (v, p) => p.data.home ? 10 : (p.data.spend ? 6 + 22 * Math.sqrt(p.data.spend / mx) : 7) },
+        { type: 'lines', coordinateSystem: 'geo', silent: true, lineStyle: { color: css('--accent'), opacity: .25, width: 1, curveness: .25 }, data: lineFrom(pl) },
+        { type: 'lines', coordinateSystem: 'geo', polyline: true, silent: true, lineStyle: { color: css('--warn'), width: 2, type: 'dashed', opacity: .9 },
+          effect: { show: true, period: 8, symbol: 'arrow', symbolSize: 7, color: css('--warn') }, data: ROUTE ? [{ coords: ROUTE }] : [] }]
+    });
+    window.addEventListener('resize', () => ch.resize());
+    travel.chart = ch;
+    // timeline: places light up as their trip months pass; the current month glows
+    const TLM = M.slice();
+    function applyTL(i) {
+      const all = i >= TLM.length; const cut = all ? '9999' : TLM[i];
+      const seen = (p) => p.home || all || (p.months || []).some((m) => m <= cut);
+      const now = (p) => !all && (p.months || []).includes(cut);
+      ch.setOption({ series: [
+        { data: pl.map((p) => ({ name: p.name + (p.work ? ' (work)' : ''), value: [p.lon, p.lat, p.spend], when: p.when, spend: p.spend, home: p.home, itemStyle: { color: colorFor(p), opacity: seen(p) ? 1 : 0.07, borderColor: now(p) ? css('--ink') : 'transparent', borderWidth: now(p) ? 2 : 0 } })) },
+        { data: lineFrom(pl.filter(seen)) },
+        { data: ROUTE && (all || !D.routeMonth || cut >= D.routeMonth) ? [{ coords: ROUTE }] : [] }] });
+      $('#tlLabel').textContent = all ? 'All trips' : d3.utcFormat('%B %Y')(new Date(cut + '-01T00:00:00Z'));
+    }
+    const rg = $('#tlRange'); rg.setAttribute("max", String(TLM.length)); rg.value = String(TLM.length);
+    rg.oninput = () => { stopTL(); applyTL(Number(rg.value)); };
+    let timer = null;
+    function stopTL() { if (timer) { clearInterval(timer); timer = null; $('#tlPlay').textContent = '▶ Play'; } }
+    $('#tlPlay').onclick = () => {
+      if (timer) { stopTL(); return; }
+      let i = Number(rg.value) >= TLM.length ? 0 : Number(rg.value);
+      $('#tlPlay').textContent = '❚❚ Pause'; rg.value = String(i); applyTL(i);
+      timer = setInterval(() => { i++; rg.value = String(i); applyTL(i); if (i >= TLM.length) stopTL(); }, 900);
+    };
+  }
+
+  // ---------- shopping ----------
+  const SHOP = D.shopping && D.shopping.vendorRegex ? { label: 'Online shopping', ...D.shopping } : null;
+  const SHOP_RE = SHOP ? rx(SHOP.vendorRegex) : null, SHOP_EX = SHOP && SHOP.excludeRegex ? rx(SHOP.excludeRegex) : null;
+  const isShop = (v) => SHOP_RE && SHOP_RE.test(v) && !(SHOP_EX && SHOP_EX.test(v));
+  const KINDS = ((SHOP && SHOP.kinds) || [['Crafts', 'sew|fabric|thread|yarn|craft|glue|paint'], ['Pets', 'cat |cats|dog|litter|kitten|puppy|pet |leash'], ['Kitchen and coffee', 'coffee|kitchen|cook|pan|knife|espresso|tea|mug'],
+    ['Tech', 'usb|cable|charger|ssd|hdmi|adapter|battery|keyboard|mouse|monitor|router|phone|laptop'], ['Health and beauty', 'vitamin|supplement|serum|skin|hair|shampoo|lotion|tooth'],
+    ['Home', 'bed|pillow|sheet|towel|curtain|lamp|bulb|storage|organizer|shelf|rug|clean|vacuum|trash'], ['Clothing', 'shirt|dress|sock|shoe|pants|jacket|legging|hoodie']]).map(([k, r]) => [k, rx(r)]);
+  const kindOf = (s) => (D.orderKinds || {})[s] || (KINDS.find(([, re]) => re.test(s)) || ['Other'])[0];
+  let shopMatch = null;
+  function matchOrders() {
+    const ch = TX.filter((t) => isShop(t.v) && t.a > 0).map((t) => ({ ...t, ms: Date.parse(t.d + 'T00:00:00Z') })).sort((a, b) => a.ms - b.ms);
+    const used = new Set(); shopMatch = new Map();
+    for (const o of D.orders) {
+      const o0 = Date.parse(o.d + 'T00:00:00Z'), o1 = o0 + 7 * 864e5;
+      const j = ch.findIndex((t, i) => !used.has(i) && t.ms >= o0 && t.ms <= o1);
+      if (j >= 0) { used.add(j); shopMatch.set(o, ch[j]); }
+    }
+  }
+  function shopping() {
+    const am = D.vendors.filter((r) => isShop(r.v));
+    const m = new Array(NM).fill(0); am.forEach((r) => r.m.forEach((v, i) => m[i] += v));
+    $('#shopTitle').textContent = SHOP.label + ', month by month';
+    $('#shopNote').textContent = (D.notes && D.notes.shopping) || 'Every charge whose vendor matches the shopping settings in config.json. The bright bars are the last 12 months.';
+    const kc = d3.rollups(D.orders, (v) => v.length, (o) => kindOf(o.item)).sort((a, b) => b[1] - a[1]);
+    const od = D.orders.map((o) => o.d).sort();
+    $('#shopTiles').replaceChildren(
+      el('div', { className: 'tile' }, [el('div', { className: 'lab', textContent: SHOP.label + ', last 12' }), el('div', { className: 'big', textContent: usd(sum(m, L12)) }), el('div', { className: 'cmp ' + (sum(m, L12) > sum(m, P12) ? 'up' : 'down'), textContent: 'vs ' + usd(sum(m, P12)) + ' prior 12 (' + fmtPct(pct(sum(m, L12), sum(m, P12))) + ')' })]),
+      ...(D.orders.length ? [
+        el('div', { className: 'tile' }, [el('div', { className: 'lab', textContent: 'Orders listed' }), el('div', { className: 'big', textContent: String(D.orders.length) }), el('div', { className: 'cmp', textContent: od[0] + ' to ' + od[od.length - 1] })]),
+        el('div', { className: 'tile' }, [el('div', { className: 'lab', textContent: 'Most common kind' }), el('div', { className: 'big', textContent: kc[0][0] }), el('div', { className: 'cmp', textContent: kc[0][1] + ' orders' })])] : []));
+    const box = $('#shopChart'); box.querySelectorAll('svg').forEach((n) => n.remove());
+    const W = Math.max(320, box.clientWidth), H = 220, ml = 50, mb = 24, mt = 8;
+    const x = d3.scaleBand(M, [ml, W - 8]).padding(.2), y = d3.scaleLinear([0, d3.max(m) || 1], [H - mb, mt]).nice();
+    const svg = d3.select(box).insert('svg', ':first-child').attr('viewBox', `0 0 ${W} ${H}`);
+    svg.append('g').selectAll('line').data(y.ticks(4)).join('line').attr('x1', ml).attr('x2', W - 8).attr('y1', y).attr('y2', y).attr('stroke', css('--line'));
+    svg.append('g').selectAll('text').data(y.ticks(4)).join('text').attr('x', ml - 6).attr('y', y).attr('dy', '.32em').attr('text-anchor', 'end').text((v) => d3.format('$~s')(v));
+    const step = Math.ceil(M.length / Math.max(1, Math.floor((W - ml) / 52)));
+    svg.append('g').selectAll('text').data(M.filter((mm, i) => i % step === 0)).join('text').attr('x', (mm) => x(mm) + x.bandwidth() / 2).attr('y', H - 6).attr('text-anchor', 'middle').text((mm) => d3.utcFormat("%b '%y")(new Date(mm + '-01T00:00:00Z')));
+    svg.append('g').selectAll('rect').data(M).join('rect').attr('x', x).attr('width', x.bandwidth()).attr('y', (mm, i) => y(m[i])).attr('height', (mm, i) => y(0) - y(m[i])).attr('fill', (mm, i) => L12SET.has(i) ? css('--accent') : css('--muted')).attr('rx', 2)
+      .on('mousemove', (ev, mm) => { const i = M.indexOf(mm); showTip(box, ev, d3.utcFormat('%B %Y')(mDate[i]), [[SHOP.label, usd(m[i])]]); }).on('mouseleave', () => hideTip(box));
+    $('#ordersCard').hidden = !D.orders.length;
+    if (!D.orders.length) return;
+    const look = SHOP.orderLookupUrl && /\{q\}/.test(SHOP.orderLookupUrl);
+    let ls = $('#lookStyle'); if (!ls) { ls = el('style', { id: 'lookStyle' }); document.head.append(ls); } ls.textContent = look ? '' : '.lookcol{display:none}';
+    const ks = $('#akind'); if (ks.options.length === 1) [...new Set(D.orders.map((o) => kindOf(o.item)))].sort().forEach((k) => ks.append(el('option', { value: k, textContent: k })));
+    if (!shopMatch) matchOrders();
+    const q = $('#aq').value.toLowerCase(), kf = ks.value;
+    const rows = D.orders.slice().reverse().filter((o) => (!q || o.item.toLowerCase().includes(q)) && (!kf || kindOf(o.item) === kf));
+    $('#aTable tbody').replaceChildren(...rows.map((o) => {
+      const hit = shopMatch.get(o);
+      const href = look ? SHOP.orderLookupUrl.replace('{q}', encodeURIComponent(o.item.split(/\s+/).slice(0, 6).join(' '))) : '';
+      return el('tr', {}, [el('td', { className: 'mono', textContent: o.d }), el('td', { textContent: o.item + (o.more ? ' + ' + o.more + ' more' : '') }), el('td', { className: 'small', textContent: kindOf(o.item) }),
+        el('td', { className: 'small mono', textContent: hit ? usd2(hit.a) + ' on ' + hit.d.slice(5) : 'no matching charge' }),
+        el('td', { className: 'small lookcol' }, look ? el('a', { href, target: '_blank', rel: 'noopener', textContent: 'Find order' }) : null)]);
+    }));
+  }
+  ['#aq', '#akind'].forEach((s) => $(s).addEventListener('input', () => SHOP && shopping()));
+  $('#optHidden').checked = showHidden();
+  $('#optHidden').onchange = () => { lsSet('familycfo.showHidden', $('#optHidden').checked ? '1' : '0'); centers(); };
+
+  // ---------- notes ----------
+  $('#notes').value = ST.notes;
+  $('#notes').addEventListener('input', () => { ST.notes = $('#notes').value; saveNotes('#noteSave'); });
+  $('#srcNote').textContent = D.source || 'Built by build_data.py from a Tiller-style Transactions export and config.json.';
+  $('#leftNote').textContent = (D.notes && D.notes.leftOut) || 'Left out everywhere: the categories listed in ignoreCategories (transfers between your own accounts and card payments), and spending matched by the exclude rules, which shows in its center instead.';
+  $('#storeNote').textContent = db ? 'Your settings, notes and tags are saved with this page.' : lsOK ? 'Your settings, notes and tags are saved in this browser only (localStorage). Nothing leaves this computer.' : 'This browser blocks storage, so settings last only until you leave the page.';
+  $('#optIntro').textContent = 'Defaults for the whole page. ' + (db ? 'They are saved with the page, so they apply on every device you open it from.' : 'They are saved in this browser.') + ' The controls on each tab still change the view for the moment.';
+
+  // ---------- period toggles ----------
+  function setPer(p) { per = p; $$('#per1 button, #per2 button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.p === p))); stack(); heat(); }
+  $$('#per1 button, #per2 button').forEach((b) => b.onclick = () => setPer(b.dataset.p));
+  $$('#heatScale button').forEach((b) => b.onclick = () => { heatScale = b.dataset.s; $$('#heatScale button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); heat(); });
+
+  // ---------- options ----------
+  function options() {
+    const O = ST.opt;
+    $('#oTheme').value = lsGet('familycfo.theme') || 'auto';
+    $('#oOrient').value = O.orient; $('#oPal').value = O.pal; $('#oInc').value = O.incMode; $('#oOne').checked = !!O.one; $('#oSmooth').checked = !!O.smooth; $('#oCatNames').value = O.catNames || ''; $('#oCtrRules').value = O.centerRules || ''; $('#oDebt').checked = !!O.trueDebt; $('#gDebt').checked = !!O.trueDebt; $('#oTax').value = O.taxRate;
+    $('#oSmoothWrap').hidden = !PAY;
+    if (PAY) $('#oSmoothLab').textContent = 'Smooth ' + PAY + ' to a flat monthly amount';
+    const rate = (+O.taxRate || 0) / 100, parts = [];
+    if (PAY && SMOOTH.pay != null) parts.push(PAY + ' smoothed to ' + usd(SMOOTH.pay) + ' a month, the average of the months it landed (' + fmtM(SMOOTH.from) + ' to ' + fmtM(SMOOTH.to) + '). Tax set aside: ' + d3.format('.0%')(rate) + ' of that pay, ' + usd(SMOOTH.pay * rate) + ' a month.');
+    if (ONE_TAXABLE.length) parts.push('One-time money in (' + ONE_TAXABLE.join(', ') + '): ' + d3.format('.0%')(rate) + (ONE_NET ? ' after ' + usd(ONE_NET) + ' of ' + D.oneoffNetOfCenter + ' costs' : '') + ', ' + usd(SMOOTH.oneTax || 0) + ' in all.');
+    $('#oExplain').textContent = parts.join(' ');
+  }
+  function setOpt(k, v) {
+    ST.opt[k] = v; persist('settings/options', ST.opt, '#optSave');
+    if (k === 'orient' || k === 'pal' || k === 'incMode' || k === 'one') { G[k] = v; syncSeg(); }
+    if (k === 'one') ONE = !!v;
+    applyOpts(); refreshAll();
+  }
+  $('#oTheme').onchange = () => { const t = $('#oTheme').value; lsSet('familycfo.theme', t); applyTheme(t); refreshAll(); };
+  [['#oOrient', 'orient'], ['#oPal', 'pal'], ['#oInc', 'incMode']].forEach(([id, k]) => $(id).onchange = () => setOpt(k, $(id).value));
+  $('#oOne').onchange = () => setOpt('one', $('#oOne').checked);
+  $('#oSmooth').onchange = () => setOpt('smooth', $('#oSmooth').checked);
+  $('#oDebt').onchange = () => setOpt('trueDebt', $('#oDebt').checked);
+  $('#oCatNames').onchange = () => setOpt('catNames', $('#oCatNames').value);
+  $('#oCtrRules').onchange = () => setOpt('centerRules', $('#oCtrRules').value);
+  $('#oTax').onchange = () => setOpt('taxRate', Math.max(0, Math.min(60, +$('#oTax').value || 0)));
+
+  // ---------- routing ----------
+  const ENABLED = { overview: true, spending: true, vendors: true, cashflow: true, subscriptions: true, hobbies: D.hobbies.length > 0, centers: true, dependent: !!DEP, travel: D.places.length > 0, shopping: !!SHOP, notes: true, options: true };
+  const VIEWS = Object.keys(ENABLED).filter((k) => ENABLED[k]);
+  $$('nav.tabs a').forEach((a) => { a.hidden = !ENABLED[a.getAttribute('href').slice(1)]; });
+  if (DEP) $('#depTab').textContent = DEP.tabLabel || DEP.label;
+  const drawn = {};
+  const drawers = { overview: () => { kpis(); stack(); }, spending: () => { heat(); catTable(); }, vendors: () => { vendors(); renames(); }, cashflow: () => { cashflow(); proj(); }, subscriptions: subs, hobbies, centers, dependent, travel, shopping, notes: () => {}, options };
+  function show() {
+    const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'overview';
+    Object.keys(ENABLED).forEach((n) => { $('#v-' + n).hidden = n !== v; });
+    $$('nav.tabs a').forEach((a) => a.setAttribute('aria-current', a.getAttribute('href') === '#' + v ? 'page' : 'false'));
+    if (v === 'travel' && drawn.travel) { travel.chart && travel.chart.resize(); return; }
+    drawers[v](); drawn[v] = true;
+  }
+  function refreshAll() { recompute(); Object.keys(drawn).forEach((k) => { if (k !== 'travel') drawn[k] = false; }); kpis(); show(); }
+  window.addEventListener('hashchange', show);
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { const v = location.hash.slice(1) || 'overview'; if (v !== 'travel' && VIEWS.includes(v)) drawers[v](); }, 200); });
+  kpis(); show();
+})();
+</script>
+</body>
+</html>
