@@ -1,0 +1,891 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Parley: SEAT-ID</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; a status strip, then the open questions first, then the record below. */
+:root {
+  --bg: #f7f8fa; --surface: #ffffff; --fg: #141414; --muted: #454545; --line: #6b7280;
+  --accent: #0f4a80; --accent-soft: #e3ecf5; --ask: #951a0a; --ask-soft: #fbe6e3; --ok: #235521;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #000000; --surface: #0d1117; --fg: #ffffff; --muted: #c8c8c8; --line: #8b949e;
+  --accent: #6db8ff; --accent-soft: #0b2744; --ask: #f38518; --ask-soft: #3a1f05; --ok: #89d185; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #000000; --surface: #0d1117; --fg: #ffffff; --muted: #c8c8c8; --line: #8b949e;
+  --accent: #6db8ff; --accent-soft: #0b2744; --ask: #f38518; --ask-soft: #3a1f05; --ok: #89d185; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 15px/1.55 var(--body); }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 34px; }
+h1 { font: 700 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 0; text-wrap: balance; }
+h2 { font: 600 19px/1.25 var(--display); margin: 0 0 12px; display: flex; align-items: center; gap: 10px; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.session { font: 12px/1.4 var(--mono); color: var(--muted); margin-top: 6px; word-break: break-all; }
+.strip { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.chip { font: 500 12.5px/1 var(--mono); padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); }
+.chip b { color: var(--fg); font-weight: 500; }
+.count { font: 600 12px/1 var(--mono); padding: 4px 8px; border-radius: 999px; background: var(--ask-soft); color: var(--ask); }
+.count.zero { background: var(--accent-soft); color: var(--accent); }
+.cards { display: grid; gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--ask); border-radius: 8px; padding: 14px 16px; display: grid; gap: 8px; min-width: 0; }
+.card .id { font: 500 12px/1 var(--mono); color: var(--muted); }
+.card .ask { font-weight: 600; }
+.card .dflt { color: var(--muted); font-size: 14px; }
+.answer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+code, pre { font: 13px/1.5 var(--mono); }
+code.ans { padding: 4px 8px; border-radius: 6px; background: var(--accent-soft); color: var(--fg); }
+pre { margin: 0; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; white-space: pre-wrap; word-break: break-word; max-height: 320px; overflow: auto; }
+button { font: 500 13px/1 var(--body); padding: 7px 11px; border-radius: 6px; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; }
+button:hover { background: var(--accent-soft); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.empty { color: var(--muted); padding: 14px 16px; border: 1px dashed var(--line); border-radius: 8px; }
+ol.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+ol.log li { display: grid; grid-template-columns: 9.5em 1fr; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); min-width: 0; }
+ol.log li:first-child { border-top: 0; }
+ol.log time { font: 12.5px/1.6 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+ol.log .tok { font: 12px/1.6 var(--mono); color: var(--muted); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+ol.log .where { display: block; color: var(--muted); font: 12.5px/1.5 var(--mono); word-break: break-all; }
+.tools { display: flex; gap: 8px; margin-bottom: 8px; }
+input[type=search] { flex: 1; min-width: 0; font: 14px var(--body); padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); }
+.tablebox { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+thead th { border-top: 0; font: 600 12px/1.2 var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); cursor: pointer; user-select: none; white-space: nowrap; }
+thead th[aria-sort=ascending]::after { content: " \2191"; } thead th[aria-sort=descending]::after { content: " \2193"; }
+td { font-variant-numeric: tabular-nums; }
+.note { color: var(--muted); font-size: 13px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 2; }
+.tabs button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; padding: 10px 14px; color: var(--muted); font: 600 14px/1 var(--body); }
+.tabs button[aria-selected=true] { color: var(--fg); border-bottom-color: var(--accent); background: transparent; }
+.tabs .n { font: 500 11px/1 var(--mono); margin-left: 6px; color: var(--muted); }
+.panel { display: grid; gap: 34px; }
+details.howto { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; }
+details.howto summary { cursor: pointer; font-weight: 600; }
+details.howto ol { margin: 10px 0 2px; padding-left: 20px; display: grid; gap: 6px; }
+td a { color: var(--accent); word-break: break-all; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; width: max-content; max-width: 100%; }
+.seg button { border: 0; border-radius: 0; padding: 6px 11px; font: 500 12px/1 var(--body); color: var(--muted); background: transparent; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed=true][data-s=open] { background: var(--ask-soft); color: var(--ask); }
+.seg button[aria-pressed=true][data-s=blocked] { background: var(--ask-soft); color: var(--ask); }
+.seg button[aria-pressed=true][data-s=started], .seg button[aria-pressed=true][data-s=review] { background: var(--accent-soft); color: var(--accent); }
+.seg button[aria-pressed=true][data-s=completed] { background: var(--accent-soft); color: var(--ok); }
+.seg button[aria-pressed=true][data-s=deferred], .seg button[aria-pressed=true][data-s=superseded] { background: var(--bg); color: var(--fg); }
+.seg.pri button[aria-pressed=true] { background: var(--ask-soft); color: var(--ask); }
+.seg button:disabled { cursor: default; }
+.card[data-stage=blocked] { border-left-color: var(--ask); }
+.card[data-stage=started], .card[data-stage=review] { border-left-color: var(--accent); }
+.card[data-stage=completed] { border-left-color: var(--ok); }
+.card[data-stage=deferred], .card[data-stage=superseded] { border-left-color: var(--line); opacity: .72; }
+.statusnote { font-size: 12px; color: var(--muted); }
+/* Triage controls: Eisenhower rating, stage flow on the left, parked states on the right, an MRP box; a filter and sort bar sits above the cards. */
+.card .head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.quad { font: 500 11px/1 var(--mono); padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.quad.q1 { background: var(--ask-soft); color: var(--ask); border-color: transparent; }
+.quad.q2 { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.quad.q3 { background: var(--accent-soft); color: var(--fg); border-color: transparent; }
+.mrpchip { font: 500 11px/1 var(--mono); color: var(--muted); margin-left: auto; }
+.ctl { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.ctl .seg.park { margin-left: auto; }
+label.mrp { display: inline-flex; gap: 6px; align-items: center; font: 12px var(--mono); color: var(--muted); }
+label.mrp input { font: 13px var(--body); padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); width: 12em; }
+.triage { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; align-items: center; }
+.triage select, .triage input[type=search] { font: 13px var(--body); padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); }
+.triage input[type=search] { flex: 1; min-width: 160px; }
+@media (max-width: 560px) { .ctl .seg.park { margin-left: 0; } .mrpchip { margin-left: 0; } }
+h1 .crew { font: 500 13px/1.4 var(--mono); color: var(--muted); margin-left: 10px; letter-spacing: 0; }
+h1 .crew .nm { white-space: nowrap; }
+.wrap > *, .panel > section, details.seat > section, .card > * { min-width: 0; }
+.chip, .summary, .statusnote, .card .ask, .card .dflt, ol.log div { overflow-wrap: anywhere; }
+.summary { font: 12.5px/1.6 var(--mono); color: var(--muted); margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.summary code { color: var(--fg); word-break: break-all; }
+.summary button, .lastturn { font: 500 11px/1 var(--mono); padding: 5px 8px; }
+.lastturn[aria-pressed=true] { background: var(--accent-soft); }
+.lastturnbox { margin-top: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+.lastturnbox dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font: 12.5px/1.6 var(--mono); }
+.lastturnbox dt { color: var(--muted); } .lastturnbox dd { margin: 0; }
+.card .ttl { font: 600 16px/1.3 var(--display); }
+.card .seat { font: 500 11px/1 var(--mono); padding: 4px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.card ol.steps { margin: 0; padding-left: 20px; color: var(--muted); font-size: 14px; display: grid; gap: 2px; }
+.seats { display: grid; gap: 12px; }
+details.seat { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; }
+details.seat[open] { display: grid; gap: 12px; }
+details.seat summary { cursor: pointer; font-weight: 600; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+details.seat summary .phase { font-weight: 400; color: var(--muted); font-size: 13px; }
+details.seat h3 { font: 600 15px/1.3 var(--display); margin: 0 0 8px; }
+details.seat .strip { margin-top: 0; }
+.delegated { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 8px; padding: 14px 16px; display: grid; gap: 6px; }
+.delegated h2 { margin: 0; }
+.delegated a { color: var(--accent); font-weight: 600; }
+@media (max-width: 560px) { ol.log li { grid-template-columns: 1fr; gap: 2px; } ol.log .tok { text-align: left; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* Page theme menu: overrides the viewer's theme; declared after the base palette so it wins. */
+:root[data-ptheme="light"] { --bg: #f7f8fa; --surface: #ffffff; --fg: #141414; --muted: #454545; --line: #6b7280; --accent: #0f4a80; --accent-soft: #e3ecf5; --ask: #951a0a; --ask-soft: #fbe6e3; --ok: #235521; color-scheme: light; }
+:root[data-ptheme="dark"] { --bg: #000000; --surface: #0d1117; --fg: #ffffff; --muted: #c8c8c8; --line: #8b949e; --accent: #6db8ff; --accent-soft: #0b2744; --ask: #f38518; --ask-soft: #3a1f05; --ok: #89d185; color-scheme: dark; }
+/* Palette named "default" (data-ws). The menu is Auto, Dark, Light. Auto follows the viewer's setting, then the browser. Every text color is at least 7:1 against --bg and --surface, and --line at least 3:1. */
+:root[data-ws="default"] { --bg: #f7f8fa; --surface: #ffffff; --fg: #141414; --muted: #454545; --line: #6b7280; --accent: #0f4a80; --accent-soft: #e3ecf5; --ask: #951a0a; --ask-soft: #fbe6e3; --ok: #235521; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root[data-ws="default"]:not([data-ptheme="light"]):not([data-theme="light"]) { --bg: #000000; --surface: #0d1117; --fg: #ffffff; --muted: #c8c8c8; --line: #8b949e; --accent: #6db8ff; --accent-soft: #0b2744; --ask: #f38518; --ask-soft: #3a1f05; --ok: #89d185; color-scheme: dark; } }
+:root[data-ws="default"][data-ptheme="dark"], :root[data-ws="default"][data-theme="dark"]:not([data-ptheme="light"]) { --bg: #000000; --surface: #0d1117; --fg: #ffffff; --muted: #c8c8c8; --line: #8b949e; --accent: #6db8ff; --accent-soft: #0b2744; --ask: #f38518; --ask-soft: #3a1f05; --ok: #89d185; color-scheme: dark; }
+.hdr { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.themepick { font: 12px/1 var(--body); color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+.themepick select { font: 12px var(--body); color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+/* Item list on a card: a card that asks for a ruling on many items carries the items, with approve or strike per row. */
+.items { display: grid; gap: 8px; }
+.items .itools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.items .itools input[type=search] { flex: 1; min-width: 140px; font: 13px var(--body); padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); }
+.items .tally { font: 12px/1.4 var(--mono); color: var(--muted); }
+.items .tablebox { max-height: 420px; overflow: auto; }
+.items tr.struck td:not(.pick) { text-decoration: line-through; color: var(--muted); }
+.items td.pick { white-space: nowrap; }
+.items .seg button[aria-pressed=true][data-v=approve] { background: var(--accent-soft); color: var(--ok); }
+.items .seg button[aria-pressed=true][data-v=strike] { background: var(--ask-soft); color: var(--ask); }
+.card .checked { font-size: 12px; color: var(--muted); }
+/* Timestamped updates, newest first, each a fenced block; lists, not prose. */
+.card .updates { display: grid; gap: 6px; }
+.card .explain { display: grid; gap: 6px; }   /* explanation blocks, shown at Verbose and up */
+.card details.upd { border-left: 3px solid var(--accent); padding: 4px 10px; background: var(--accent-soft); border-radius: 0 6px 6px 0; }
+.card details.upd summary { cursor: pointer; font: 600 13px/1.4 var(--mono); color: var(--fg); }
+.card details.upd ul { margin: 4px 0 2px; padding-left: 18px; font-size: 14px; display: grid; gap: 2px; }
+.card details.upd p { margin: 4px 0 2px; font-size: 14px; }
+.card details.upd.bg { border-left-color: var(--muted); background: transparent; }
+.card details.upd.bg summary { color: var(--muted); font-weight: 500; }
+.card details.upd.bg .ctx::before { content: ""; }
+/* Artifact header: who wrote the page, the authoring session's full id, headless or not, and whether that session is live to answer comments. */
+.ah { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font: 12.5px/1.45 var(--body, inherit); color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: 7px 12px; margin-top: 8px; }
+.ah b { color: var(--fg, var(--ink, inherit)); font-weight: 600; }
+.ah .ah-uuid { font-family: var(--mono); font-size: 11.5px; overflow-wrap: anywhere; }
+.ah .ah-st { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--fg, var(--ink, inherit)); }
+.ah .ah-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.ah[data-live="live"] .ah-dot { background: var(--ok, #2d6a2a); }
+.ah[data-live="idle"] .ah-dot { background: var(--accent); }
+.ah .ah-note { flex-basis: 100%; font-size: 12px; }
+/* Detail rail: zero / concise / verbose / exhaustive; l1, l2, l3 mark the lowest level that shows an element. */
+.rail { position: fixed; left: 8px; top: 50%; transform: translateY(-50%); z-index: 20; display: grid; gap: 6px; justify-items: center; background: var(--panel, var(--bg)); border: 1px solid var(--line); border-radius: 12px; padding: 10px 6px; width: 96px; box-shadow: 0 2px 12px rgba(0,0,0,.10); }
+.rail .t { font: 600 10px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.rail input[type="range"] { writing-mode: vertical-lr; direction: rtl; width: 22px; height: 110px; accent-color: var(--accent); margin: 2px 0; cursor: ns-resize; }
+.rail .lv { display: grid; gap: 2px; width: 100%; }
+.rail .lv button { font: 500 11.5px/1.2 var(--body, inherit); border: 1px solid transparent; background: transparent; color: var(--muted); border-radius: 6px; padding: 3px 4px; cursor: pointer; text-align: center; }
+.rail .lv button[aria-pressed="true"] { background: var(--accent); color: var(--bg); font-weight: 600; }
+.rail .hint { font-size: 10px; color: var(--muted); text-align: center; line-height: 1.25; }
+@media (max-width: 1140px) { .rail { position: static; transform: none; width: auto; grid-auto-flow: column; align-items: center; gap: 10px; padding: 6px 10px; box-shadow: none; margin: 8px 0; } .rail input[type="range"] { writing-mode: horizontal-tb; direction: ltr; width: 110px; height: 22px; cursor: ew-resize; } .rail .lv { grid-auto-flow: column; } .rail .hint { display: none; } }
+body[data-lvl="0"] .l1, body[data-lvl="0"] .l2, body[data-lvl="0"] .l3, body[data-lvl="1"] .l2, body[data-lvl="1"] .l3, body[data-lvl="2"] .l3 { display: none !important; }
+body[data-lvl="0"] .card ol.steps { display: none !important; }
+/* The question leads the card, in its own tinted band. */
+.card .qlabel { font: 600 11.5px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ask); }
+.card .ask { font: 600 16.5px/1.4 var(--body); color: var(--fg); padding: 8px 12px; border-radius: 6px; background: var(--ask-soft); }
+.card .ctx { color: var(--muted); font-size: 14px; }
+.card .ctx::before { content: "Context: "; font-weight: 600; }
+/* Parked and closed cards sit in their own groups; each card says where it comes from. */
+.cards .group { font: 600 12px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 10px 0 0; padding-top: 12px; border-top: 1px solid var(--line); }
+.card .origin { font-size: 13px; color: var(--fg); overflow-wrap: anywhere; }
+.card .origin b { font-weight: 600; }
+.card .origin a { color: var(--accent); }
+.card .origin code { font: 500 12px/1.3 var(--mono); }
+/* A step's label is the only number shown; the list marker is hidden. */
+ol.steps, .card ol.steps { list-style: none; padding-left: 0; }
+ol.steps li { display: flex; gap: 6px; align-items: baseline; }
+ol.steps .lbl { flex: 0 0 auto; min-width: 1.8em; font-weight: 600; color: var(--fg); }
+</style>
+
+<div class="wrap">
+  <section id="mothball" hidden></section>
+  <header>
+    <div class="hdr"><div class="eyebrow">Parley</div>
+      <label class="themepick">Theme <select id="ptheme"><option value="auto">Auto</option><option value="dark">Dark</option><option value="light">Light</option></select></label></div>
+    <h1 id="title"></h1>
+    <div class="summary" id="session"></div>
+    <div class="ah" id="ah" data-artifact-header="1" data-live="grey" role="note" aria-label="Who made this page and whether it is watched">
+      <span class="ah-st"><span class="ah-dot" aria-hidden="true"></span><span id="ah-status">Author status unknown</span></span>
+      <span>Authored by <b id="ah-seat"></b> <span class="ah-uuid" id="ah-uuid"></span></span>
+      <span id="ah-home"></span><span id="ah-mode"></span>
+      <span class="ah-note" id="ah-note"></span>
+    </div>
+    <div class="strip" id="strip"></div>
+  </header>
+  <nav class="tabs" role="tablist" aria-label="Page sections">
+    <button type="button" role="tab" id="tab-parley" aria-controls="panel-parley" aria-selected="true">Parley<span class="n" id="qbadge"></span></button>
+    <button type="button" role="tab" id="tab-crew" aria-controls="panel-crew" aria-selected="false">Crew<span class="n" id="ccount"></span></button>
+    <button type="button" role="tab" id="tab-sleepers" aria-controls="panel-sleepers" aria-selected="false">Sleepers<span class="n" id="scount"></span></button>
+    <button type="button" role="tab" id="tab-artifacts" aria-controls="panel-artifacts" aria-selected="false">Artifacts<span class="n" id="acount"></span></button>
+    <button type="button" role="tab" id="tab-changes" aria-controls="panel-changes" aria-selected="false">Changes</button>
+  </nav>
+<!-- Detail rail: a visible zero / concise / verbose / exhaustive slider on the left that moves with the scroll wheel. -->
+  <div class="rail" id="rail" role="group" aria-label="Level of detail">
+    <span class="t">Detail</span>
+    <div class="lv">
+      <button type="button" data-lvl="3" aria-pressed="false">Exhaustive</button>
+      <button type="button" data-lvl="2" aria-pressed="false">Verbose</button>
+      <button type="button" data-lvl="1" aria-pressed="true">Concise</button>
+      <button type="button" data-lvl="0" aria-pressed="false">Zero</button>
+    </div>
+    <input type="range" id="lvlrange" min="0" max="3" step="1" value="1" aria-label="Level of detail">
+    <span class="hint">scroll here or click</span>
+  </div>
+  <div class="panel" id="panel-parley" role="tabpanel" aria-labelledby="tab-parley">
+    <section class="delegated" id="delegated" hidden></section>
+    <details class="howto l3" id="howto">
+      <summary>How to use this page</summary>
+      <ol>
+        <li>Each card under "Questions for you" is one open ask. Answer by commenting on the card and sending the comment to Claude. The comment wakes the session that owns this page.</li>
+        <li>Each card says what happens if you say nothing. Silence is a valid answer.</li>
+        <li>Copy puts the card's answer code, or the full text to paste somewhere else, on your clipboard.</li>
+        <li>Each card carries an Eisenhower rating (Important, Urgent, both or neither), a stage and a most responsible party (MRP). The stage flow runs Open, Start, In review, Completed on the left; Blocked, Deferred and Superseded are parked on the right. Open means the party that raised the card owns it. Start, In review and Completed clicked here set the MRP to the reviewer with the time; type any other name (a session, a colleague, a blocking card) in the MRP box. All of it is saved with the page and the owning session reads it at the start of every turn, so a click is enough; comment only when there is something to say.</li>
+        <li>Rank order is Important + urgent, then Urgent, then Important, then Neither, oldest card first within each. The bar above the cards filters by stage, quadrant and MRP, searches the text, and changes the sort. Completed and Superseded cards are hidden until you pick All stages.</li>
+        <li>A card that asks about many items lists them in a table, each row with Approve or Strike. Your clicks are saved with the page and the session applies the approved rows; the answer line under the table updates as you go, so a comment is only needed for something the buttons cannot say.</li>
+        <li>Comment on the card itself (its id, title or text). The session routes your comment by the card you highlighted, because cards can move when the page is republished.</li>
+        <li>Once a card is answered, the session records your ruling, updates this page and closes the thread. Answered cards leave the page.</li>
+        <li>If this session manages other seats, every question from the crew is a card on this one Parley tab, tagged with the seat that asked it; the manager relays your answer by the card's id. The Crew tab holds each awake seat's phase, what it has been doing and the state of its work. The Sleepers tab holds seats that are mothballed or idle with no loop armed: a seat that completed its mission rests there until the mission comes back.</li>
+        <li>The Artifacts tab lists every page this session has published, live or retired.</li>
+        <li>This page is the review surface. Keep your own record of decisions elsewhere.</li>
+      </ol>
+    </details>
+    <details class="howto l3" id="feedback">
+      <summary>Feedback for the parley skill (accumulated here for its maintainer)</summary>
+      <ol id="feedback-list"></ol>
+      <div class="answer" id="feedback-copy"></div>
+    </details>
+    <section aria-labelledby="h-q"><h2 id="h-q">Questions for you <span class="count" id="qcount"></span></h2><p class="statusnote l2" id="statusnote">Rate, stage and assign each card with the buttons on it; the bar below filters and sorts. The Detail slider on the left (Zero, Concise, Verbose, Exhaustive) sets how much of each card and of this page you see; scroll the wheel over it or click.</p><div class="cards" id="questions"></div></section>
+    <section aria-labelledby="h-d" class="l1"><h2 id="h-d">Decisions taken on your behalf</h2><div id="decisions"></div></section>
+    <section aria-labelledby="h-a" class="l2"><h2 id="h-a">What I have been doing</h2><ol class="log" id="activity"></ol></section>
+    <section aria-labelledby="h-w" class="l2"><h2 id="h-w">State of the work</h2><div id="work"></div></section>
+  </div>
+  <div class="panel" id="panel-changes" role="tabpanel" aria-labelledby="tab-changes" hidden>
+    <section aria-labelledby="h-c"><h2 id="h-c">Change log</h2><ol class="log" id="changes"></ol></section>
+  </div>
+  <div class="panel" id="panel-crew" role="tabpanel" aria-labelledby="tab-crew" hidden>
+    <section aria-labelledby="h-crew"><h2 id="h-crew">Crew, reporting to <span id="crew-of"></span></h2>
+      <p class="note">One block per awake seat: its phase, what it has been doing and the state of its work. Its questions for you are cards on the Parley tab, tagged with its name.</p>
+      <div class="seats" id="crew"></div></section>
+  </div>
+  <div class="panel" id="panel-sleepers" role="tabpanel" aria-labelledby="tab-sleepers" hidden>
+    <section aria-labelledby="h-sleep"><h2 id="h-sleep">Sleepers</h2>
+      <p class="note">Seats on the crew that are mothballed or idle with no loop armed. Each keeps its place and its last known state until its mission comes back.</p>
+      <div class="seats" id="sleepers"></div></section>
+  </div>
+  <div class="panel" id="panel-artifacts" role="tabpanel" aria-labelledby="tab-artifacts" hidden>
+    <section aria-labelledby="h-art"><h2 id="h-art">Everything this session has published</h2>
+      <p class="note">A page in another account's organisation opens only for an account it has been shared with.</p>
+      <div id="artifacts"></div></section>
+  </div>
+</div>
+
+<script>
+/* EDIT ONLY THIS OBJECT. Example rows below are fictional placeholders; replace them with your own. */
+const DATA = {
+  "seat": "SEAT-ID",
+  "version": "v1.0",
+  "phase": "what this session is doing now",
+  "session_uuid": "",
+  "headless": false,
+  "session_name": "",
+  "reviewer": "Reviewer",
+  "updated": "2025-01-15 09:00 UTC",
+  "loop": "self-timed check every 50 min",
+  "next_tick": "2025-01-15 09:50",
+  "loop_period_min": 50,
+  "theme": "auto",
+  "capacity": "",
+  "remote_control": "",
+  "account": "",
+  "parley_url": "",
+  "manager": "",
+  "parties": [],
+  "reports": [],
+  "questions": [
+    {
+      "id": "EX-1",
+      "codename": "#Demo_RetryPolicy",
+      "title": "Retry policy for the nightly export",
+      "from": "SEAT-ID",
+      "opened": "2025-01-15 09:00 UTC",
+      "important": true,
+      "urgent": false,
+      "mrp": "Reviewer",
+      "ask": "Should the nightly export retry three times before it alerts?",
+      "context": "Optional: why it matters, what was tried. Shown muted under the question; keep it to the current state.",
+      "updates": [
+        { "when": "2025-01-15 09:00 UTC", "title": "Three failures this week", "points": ["Tuesday and Thursday runs failed on a timeout", "Both passed on a manual rerun"] }
+      ],
+      "origin": { "project": "Data exports", "thread": "#Demo_RetryPolicy", "link": "https://example.com/only-an-https-link-never-a-file-path" },
+      "explain": [{ "title": "Why this matters", "points": ["One point per line", "Shown at Verbose and Exhaustive, hidden at Concise and Zero"] }],
+      "steps": ["Pick the retry count", "Say if the alert should still fire on the last failure"],
+      "dflt": "If you say nothing, the export keeps the current policy: no retry, alert at once.",
+      "checked": "2025-01-15 08:55: the scheduler config still shows no retry; no earlier ruling found",
+      "answer": "{EX-1: retry 3}"
+    }
+  ],
+  "activity": [
+    {
+      "when": "2025-01-15 09:00 UTC",
+      "what": "Added the retry-policy card after the second failed run.",
+      "tokens": ""
+    }
+  ],
+  "work": {
+    "columns": [
+      "Item",
+      "State"
+    ],
+    "rows": [
+      [
+        "Nightly export",
+        "running, 3 failures this week"
+      ]
+    ]
+  },
+  "decisions": {
+    "columns": [
+      "When",
+      "What",
+      "Evidence",
+      "How to reverse"
+    ],
+    "rows": [
+      [
+        "2025-01-14 18:00 UTC",
+        "Kept the export window at 02:00",
+        "No overlap with the backup job",
+        "Change the schedule back to 03:00"
+      ]
+    ]
+  },
+  "changes": [
+    {
+      "when": "2025-01-15 09:00 UTC",
+      "what": "v1.0 first publish"
+    }
+  ],
+  "artifacts": {
+    "columns": [
+      "Title",
+      "Account",
+      "Status",
+      "Updated",
+      "Link"
+    ],
+    "rows": [
+      [
+        "Parley with SEAT-ID",
+        "my-account",
+        "live",
+        "2025-01-15 09:00 UTC",
+        "https://example.com/this-page"
+      ]
+    ]
+  }
+};
+</script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  function copyBtn(text) {
+    const b = el("button", null, "Copy");
+    b.type = "button";
+    b.addEventListener("click", () => {
+      const done = () => { b.textContent = "Copied"; setTimeout(() => (b.textContent = "Copy"), 1500); };
+      const fallback = () => { const r = document.createRange(); r.selectNodeContents(b.previousElementSibling || b); const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "Selected, press Ctrl+C"; };
+      try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+    });
+    return b;
+  }
+  /* Title is "Parley: <seat>" for tab width; a crew, when there is one, is named in small letters after it. */
+  /* Steps as a list: an explicit array renders as a list; so do lines that start with a step label, and so does a run of inline labels in sequence (1, 2 / a, b / 1A, 1B, 2A). */
+  const LBL = /(^|[\s:;,.])(\((\d{1,2}[A-Za-z]?|[A-Za-z])\)|(\d{1,2}[A-Za-z]?)[.)]|(\d{1,2}[A-Za-z])(?=[\s:])|([A-Za-z])\))(?=\s)/g;
+  function lblKey(m) { const raw = (m[3] || m[4] || m[5] || m[6] || "").toUpperCase(); const n = raw.match(/^\d+/); return { raw: raw, shown: m[3] || m[4] || m[5] || m[6] || "", n: n ? +n[0] : null, l: raw.replace(/^\d+/, "") || null }; }
+  function follows(a, b) {
+    const nl = (x) => x ? x.charCodeAt(0) : 64;
+    if (a.n !== null && b.n !== null) return (b.n === a.n && a.l && b.l && nl(b.l) === nl(a.l) + 1) || (b.n === a.n + 1 && (!b.l || b.l === "A"));
+    if (a.n === null && b.n === null) return nl(b.l) === nl(a.l) + 1;
+    return false;
+  }
+  function splitSteps(text) {
+    const t = String(text == null ? "" : text);
+    const lines = t.split(/\n+/).map((x) => x.trim()).filter(Boolean);
+    if (lines.length > 1 && lines.filter((x) => /^(\(?\w{1,3}[.)]|[-*•])\s/.test(x)).length >= 2) {
+      const intro = []; const items = [];
+      lines.forEach((x) => { const m = x.match(/^(\(?(\d{1,2}[A-Za-z]?|[A-Za-z])\)|(\d{1,2}[A-Za-z]?)[.)]|[-*•])\s+(.*)$/); if (m) items.push([m[2] || m[3] || "", m[4]]); else if (items.length) items[items.length - 1][1] += " " + x; else intro.push(x); });
+      return { intro: intro.join(" "), items: items, tail: "" };
+    }
+    const ms = []; let m; LBL.lastIndex = 0;
+    while ((m = LBL.exec(t))) ms.push({ at: m.index + m[1].length, end: LBL.lastIndex, k: lblKey(m) });
+    let best = [];
+    for (let i = 0; i < ms.length; i++) {
+      const k = ms[i].k; if (!(k.raw === "1" || k.raw === "A" || k.raw === "1A")) continue;
+      const run = [ms[i]];
+      for (let j = i + 1; j < ms.length; j++) if (follows(run[run.length - 1].k, ms[j].k)) run.push(ms[j]);
+      if (run.length > best.length) best = run;
+    }
+    if (best.length < 2) return null;
+    const items = best.map((r, i) => [r.k.shown, t.slice(r.end, i + 1 < best.length ? best[i + 1].at : t.length).trim().replace(/[;,]$/, "")]);
+    return { intro: t.slice(0, best[0].at).trim(), items: items, tail: "" };
+  }
+  function rich(cls, text, steps) {
+    const d = el("div", cls);
+    const sp = Array.isArray(steps) && steps.length ? { intro: String(text || ""), items: steps.map((x, i) => Array.isArray(x) ? x : [String(i + 1), String(x)]) } : splitSteps(text);
+    if (!sp) { d.textContent = text == null ? "" : text; return d; }
+    if (sp.intro) d.append(sp.intro);
+    const ol = el("ol", "steps");
+    sp.items.forEach(([l, x]) => { const li = el("li"); li.append(el("span", "lbl", l ? String(l).replace(/[.)]+$/, "") + "." : "•"), el("span", null, x)); ol.append(li); });
+    d.append(ol); return d;
+  }
+  /* Mothball and relaunch: a sleeping seat shows a relaunch box with the text that wakes it, at the very top of its page. */
+  function relaunchBox(mb, title) {
+    const m = el("section", "delegated mothball");
+    m.append(el("h2", null, title));
+    if (mb.steps && mb.steps.length) { const ol = el("ol"); mb.steps.forEach((s) => ol.append(el("li", null, s))); m.append(ol); }
+    const box = el("div", "paste"); box.append(el("pre", null, mb.relaunch), copyBtn(mb.relaunch));
+    box.style.display = "grid"; box.style.justifyItems = "start"; box.style.gap = "6px"; m.append(box);
+    if (mb.note) m.append(el("p", null, mb.note));
+    return m;
+  }
+  if (DATA.mothball && DATA.mothball.relaunch) {
+    $("mothball").replaceWith(relaunchBox(DATA.mothball, "Mothballed" + (DATA.mothball.at ? " on " + DATA.mothball.at : "") + ". To reawaken this seat:"));
+  }
+  document.title = "Parley: " + DATA.seat;
+  const reports = DATA.reports || [];
+  const asleep = (r) => !!r.mothball || !r.loop || /^none/i.test(String(r.loop));
+  const awake = reports.filter((r) => !asleep(r)), sleepers = reports.filter(asleep);
+  (function () {
+    const pick = $("ptheme"); const ok = ["auto", "dark", "light"];
+    document.documentElement.setAttribute("data-ws", "default");
+    let v = null; try { v = localStorage.getItem("parley-theme"); } catch (e) {}
+    if (!ok.includes(v)) v = ok.includes(DATA.theme) ? DATA.theme : "auto";
+    const apply = (x) => { if (x === "auto") document.documentElement.removeAttribute("data-ptheme"); else document.documentElement.setAttribute("data-ptheme", x); };
+    pick.value = v; apply(v);
+    pick.addEventListener("change", () => { apply(pick.value); try { localStorage.setItem("parley-theme", pick.value); } catch (e) {} });
+  })();
+  $("title").textContent = DATA.seat;
+  if (reports.length) {
+    const s = el("span", "crew");
+    const names = (list) => list.map((r, i) => { const n = el("span", "nm", r.seat); return i ? [", ", n] : [n]; }).flat();
+    s.append("and its crew: "); if (awake.length) s.append(...names(awake)); else s.append("none awake");
+    if (sleepers.length) { s.append(" · asleep: ", ...names(sleepers)); }
+    $("title").append(" ", s);
+  }
+  $("crew-of").textContent = DATA.seat;
+  function nextTick() {
+    if (!DATA.next_tick) return "";
+    const per = (DATA.loop_period_min || 0) * 60000;
+    let t = new Date(DATA.next_tick.replace(" ", "T").slice(0, 16));
+    if (isNaN(t)) return "";
+    let est = false;
+    while (per > 0 && t < new Date()) { t = new Date(t.getTime() + per); est = true; }
+    return "next " + String(t.getHours()).padStart(2, "0") + ":" + String(t.getMinutes()).padStart(2, "0") + (est ? " (est.)" : "");
+  }
+  [["version", DATA.version], ["phase", DATA.phase], ["account", DATA.account]].forEach(([k, v]) => {
+    if (!v) return;
+    const c = el("span", "chip"); c.append(k + " "); c.append(el("b", null, v)); $("strip").append(c);
+  });
+  /* Last turn: a toggle, off on every load, that shows the previous turn at a glance: when, the tick before it, loop, capacity, remote control, tokens. */
+  (function () {
+    const per = DATA.loop_period_min || 0;
+    const prevTick = (() => { if (!DATA.next_tick || !per) return ""; const t = new Date(DATA.next_tick.replace(" ", "T").slice(0, 16)); if (isNaN(t)) return ""; const p = new Date(t.getTime() - per * 60000); return String(p.getHours()).padStart(2, "0") + ":" + String(p.getMinutes()).padStart(2, "0"); })();
+    const acts = DATA.activity || [];
+    const last = acts.find((a) => a.tokens && /\d/.test(a.tokens) && /cached|fresh|out/i.test(a.tokens)) || {};
+    const rows = [
+      ["Last turn", DATA.updated || ""],
+      ["Tick before it", prevTick ? prevTick + (per ? " (every " + per + " min)" : "") : ""],
+      ["Loop", [DATA.loop, nextTick()].filter(Boolean).join(", ")],
+      ["Capacity", DATA.capacity || ""],
+      ["Remote control", DATA.remote_control || ""],
+      ["Tokens, last measured turn", last.tokens ? last.tokens + (last.when ? " (" + last.when + ")" : "") : ""]
+    ].filter(([, v]) => v);
+    if (!rows.length) return;
+    const b = el("button", "lastturn", "Last turn"); b.type = "button"; b.setAttribute("aria-pressed", "false"); b.setAttribute("aria-expanded", "false");
+    const box = el("div", "lastturnbox"); box.hidden = true;
+    const dl = el("dl"); rows.forEach(([k, v]) => { dl.append(el("dt", null, k), el("dd", null, v)); }); box.append(dl);
+    b.addEventListener("click", () => { const on = box.hidden; box.hidden = !on; b.setAttribute("aria-pressed", on ? "true" : "false"); b.setAttribute("aria-expanded", on ? "true" : "false"); });
+    $("strip").append(b); $("strip").after(box);
+  })();
+  /* Triage: Eisenhower rating, a seven-stage flow, the most responsible party (MRP), rank, filter and sort.
+     State lives in this page's db collection "status", one doc per card id:
+     { status (legacy: open, working, done, deferred, kept for sessions on the old parley skill), stage, important, urgent, mrp, at, history[] }.
+     Seeds come from each card's DATA fields (stage or status, important, urgent, mrp or from, opened, title); the db overrides them. */
+  const STAGES = [["open", "Open"], ["blocked", "Blocked"], ["started", "Started"], ["review", "In review"], ["completed", "Completed"], ["deferred", "Deferred"], ["superseded", "Superseded"]];
+  const LABEL = Object.fromEntries(STAGES);
+  const FLOW = ["open", "started", "review", "completed"], PARKED = ["blocked", "deferred", "superseded"], CLOSED = ["completed", "superseded"];
+  const LEGACY = { open: "open", blocked: "open", started: "working", review: "working", completed: "done", deferred: "deferred", superseded: "done" };
+  const FROM_LEGACY = { open: "open", working: "started", done: "completed", deferred: "deferred" };
+  const QUADS = [["q1", "Important + urgent"], ["q2", "Urgent"], ["q3", "Important"], ["q4", "Neither"]];
+  const QLABEL = Object.fromEntries(QUADS);
+  const quadOf = (s) => s.important && s.urgent ? "q1" : s.urgent ? "q2" : s.important ? "q3" : "q4";
+  const ME = DATA.reviewer || "Reviewer";
+  const PARTIES = Array.from(new Set([ME, DATA.seat].concat(reports.map((r) => r.seat), DATA.parties || [], (DATA.questions || []).concat(reports.flatMap((r) => r.questions || [])).flatMap((q) => [q.from, q.mrp])).filter(Boolean)));
+  (function () { const d = el("datalist"); d.id = "parties"; PARTIES.forEach((p) => { const o = el("option"); o.value = p; d.append(o); }); document.body.append(d); })();
+  const CARDS = {}, STATE = {}, REDRAW = [], DOCKEY = {}; let DB = null; let writable = true;
+  /* An id with spaces, commas or parentheses is not a valid document path, so status/<id> would fail and every click would be lost. The doc id keeps [A-Za-z0-9_.-] only. */
+  const docKey = (id) => String(id).replace(/[^A-Za-z0-9_.-]+/g, "-").replace(/^-+|-+$/g, "") || "card";
+  function normalize(q, doc) {
+    const s = { stage: "open", important: !!q.important, urgent: !!q.urgent, mrp: q.mrp || q.from || DATA.seat, at: "", history: [], items: {} };
+    const base = String(q.stage || q.status || "open").toLowerCase();
+    s.stage = LABEL[base] ? base : (FROM_LEGACY[base] || "open");
+    if (doc) {
+      if (doc.stage && LABEL[doc.stage]) s.stage = doc.stage; else if (doc.status && FROM_LEGACY[doc.status]) s.stage = FROM_LEGACY[doc.status];
+      if (typeof doc.important === "boolean") s.important = doc.important;
+      if (typeof doc.urgent === "boolean") s.urgent = doc.urgent;
+      if (doc.mrp) s.mrp = String(doc.mrp);
+      if (doc.at) s.at = String(doc.at);
+      if (Array.isArray(doc.history)) s.history = doc.history;
+      if (doc.items && typeof doc.items === "object" && !Array.isArray(doc.items)) s.items = doc.items;
+    }
+    return s;
+  }
+  const fmt = (t) => { if (!t) return ""; t = String(t); if (!/T\d\d:\d\d/.test(t)) return t; const d = new Date(t); if (isNaN(d)) return t; return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0") + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
+  const paintAll = () => { REDRAW.forEach((f) => f()); summary(); };
+  async function save(id, patch, who) {
+    if (!DB || !writable) return;
+    const prev = STATE[id]; const next = Object.assign({}, prev, patch);
+    if (patch.stage && patch.stage !== prev.stage) {
+      next.at = new Date().toISOString(); if (who) next.mrp = who;
+      next.history = (prev.history || []).concat([{ stage: next.stage, mrp: next.mrp, at: next.at }]).slice(-12);
+    }
+    STATE[id] = next; paintAll();
+    try { await DB.doc("status/" + docKey(id)).set({ status: LEGACY[next.stage], stage: next.stage, important: next.important, urgent: next.urgent, mrp: next.mrp, at: next.at, history: next.history, items: next.items || {} }); }
+    catch (e) { STATE[id] = prev; if (e && e.code === "invalid_argument") writable = false; paintAll(); }
+  }
+  const idNum = (id) => { const m = /(\d+)(?!.*\d)/.exec(String(id)); return m ? Number(m[1]) : 0; };
+  const ageKey = (q) => (q.opened || "") + "|" + String(idNum(q.id)).padStart(6, "0");
+  /* Item list:
+     q.items = { columns: [...], rows: [[...]], key: <column index of the row id, default 0>, default: "approve" | "strike" }.
+     Each row's choice is saved in the card's status doc as items[<row id>] = "approve" | "strike". */
+  const FILTERS = {};
+  const rowKey = (q, r) => String(r[(q.items.key | 0)] == null ? "" : r[(q.items.key | 0)]);
+  const rowPick = (q, s, r) => (s.items && s.items[rowKey(q, r)]) || q.items.default || "approve";
+  function itemAnswer(q, s) {
+    const rows = q.items.rows; const struck = rows.filter((r) => rowPick(q, s, r) === "strike").map((r) => rowKey(q, r));
+    if (!struck.length) return "{" + q.id + ": approve all " + rows.length + "}";
+    if (struck.length === rows.length) return "{" + q.id + ": strike all " + rows.length + "}";
+    return "{" + q.id + ": approve " + (rows.length - struck.length) + ", strike " + struck.length + ": " + struck.join(", ") + "}";
+  }
+  function itemList(q, s, off) {
+    const it = q.items; const box = el("div", "items");
+    const tools = el("div", "itools");
+    const f = el("input"); f.type = "search"; f.placeholder = "Filter " + it.rows.length + " rows"; f.setAttribute("aria-label", "Filter rows of " + q.id); f.value = FILTERS[q.id] || "";
+    const n = it.rows.filter((r) => rowPick(q, s, r) === "strike").length;
+    const tally = el("span", "tally", it.rows.length + " rows · " + (it.rows.length - n) + " approved · " + n + " struck");
+    const bulk = (v, t) => { const b = el("button", null, t); b.type = "button"; b.disabled = off; b.addEventListener("click", () => { const m = {}; it.rows.forEach((r) => { m[rowKey(q, r)] = v; }); save(q.id, { items: m }); }); return b; };
+    tools.append(f, tally, bulk("approve", "Approve all"), bulk("strike", "Strike all"));
+    const tb = el("div", "tablebox"); const t = el("table"); const th = el("thead"); const hr = el("tr"); const body = el("tbody");
+    (it.columns || []).forEach((h) => hr.append(el("th", null, String(h)))); hr.append(el("th", null, "Ruling")); th.append(hr);
+    function draw() {
+      const qx = f.value.trim().toLowerCase(); FILTERS[q.id] = f.value;
+      body.replaceChildren(...it.rows.filter((r) => !qx || r.join(" ").toLowerCase().includes(qx)).map((r) => {
+        const k = rowKey(q, r); const v = rowPick(q, s, r); const tr = el("tr"); if (v === "strike") tr.className = "struck";
+        r.forEach((x) => tr.append(el("td", null, x == null ? "" : String(x))));
+        const td = el("td", "pick"); const g = el("div", "seg"); g.setAttribute("role", "group"); g.setAttribute("aria-label", "Ruling on " + k);
+        [["approve", "Approve"], ["strike", "Strike"]].forEach(([val, txt]) => { const b = el("button", null, txt); b.type = "button"; b.dataset.v = val; b.disabled = off; b.setAttribute("aria-pressed", v === val ? "true" : "false");
+          b.addEventListener("click", () => { const cur = STATE[q.id]; if (rowPick(q, cur, r) !== val) { const m = Object.assign({}, cur.items); m[k] = val; save(q.id, { items: m }); } }); g.append(b); });
+        td.append(g); tr.append(td); return tr;
+      }));
+    }
+    f.addEventListener("input", draw); draw();
+    t.append(th, body); tb.append(t); box.append(tools, tb);
+    return box;
+  }
+  /* origin is {project, thread, link} or a plain string; the page shows where a card comes from. A link that is not http(s) is not rendered. */
+  const originText = (o) => typeof o === "string" ? o : [o.project, o.thread, o.link].filter(Boolean).join(" ");
+  function originLine(o) {
+    const d = el("div", "origin"); d.append(el("b", null, "Where this comes from: "));
+    if (typeof o === "string") { d.append(o); return d; }
+    const parts = [o.project, o.thread].filter(Boolean).join(", ");
+    if (parts) d.append(parts);
+    /* Only an https link renders; a file path is dropped here and refused by the compile. A card carries what the reader needs, so no one has to open a file. */
+    if (o.link && /^https?:\/\//i.test(String(o.link))) {
+      if (parts) d.append(". ");
+      const a = el("a", null, o.label || String(o.link)); a.href = String(o.link); a.target = "_blank"; a.rel = "noopener"; d.append(a);
+    }
+    return d;
+  }
+  function card(q) {
+    const s = STATE[q.id]; const qk = quadOf(s); const off = !DB || !writable;
+    const c = el("article", "card"); c.dataset.card = q.id; c.dataset.stage = s.stage; c.dataset.quad = qk; c.id = "card-" + String(q.id).replace(/[^A-Za-z0-9_-]+/g, "-");
+    const head = el("div", "head");
+    /* A card is named by a thread codename (#PROJECT_TopicCamelCase); the id stays the routing token. */
+    const codename = q.codename || (/^[A-Za-z]+_[A-Za-z0-9]+$/.test(String(q.id)) ? "#" + q.id : null);
+    head.append(el("span", "id", codename || q.id), el("span", "quad " + qk, QLABEL[qk]));
+    if (q.seat) { const t = el("span", "seat", "asked by " + q.seat); t.title = DATA.seat + " relays your answer to " + q.seat + " by the card's id"; head.append(t); }
+    head.append(el("span", "mrpchip", "MRP " + s.mrp));
+    c.append(head);
+    let qtext = q.question || q.ask, ctx = q.question ? (q.context || q.ask) : q.context;
+    const qm = !q.question && typeof q.ask === "string" ? q.ask.match(/^\s*QUESTION FOR YOU:\s*([\s\S]*?)\s*(?:Context:\s*([\s\S]*))?$/i) : null;
+    if (qm) { qtext = qm[1]; ctx = q.context || qm[2]; }
+    /* A question that repeats the title shows once, as the question. */
+    const same = (a, b) => String(a || "").toLowerCase().replace(/[^a-z0-9]+/g, "") === String(b || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+    if (q.title && !same(q.title, qtext)) c.append(el("div", "ttl", q.title));
+    c.append(el("div", "qlabel", "Question for you"), rich("ask", qtext, q.steps));
+    if (q.origin) { const ol = originLine(q.origin); ol.classList.add("l2"); c.append(ol); }
+    c.append(rich("dflt l1", q.dflt));
+    /* updates: [{when, title, points: [...]}], newest first; each is a fenced block headed by its stamp, the newest open and the rest folded.
+       The old context becomes the last block, "Background", folded whenever updates exist or it runs long. */
+    const ups = Array.isArray(q.updates) ? q.updates : [];
+    if (ups.length) {
+      const u = el("div", "updates");
+      ups.forEach((x, i) => {
+        const b = el("details", i === 0 ? "upd l1" : "upd l2"); if (i === 0) b.open = true;
+        b.append(el("summary", null, (x.when || "undated") + (x.title ? ": " + x.title : "")));
+        const pts = Array.isArray(x.points) ? x.points : (x.points ? [x.points] : []);
+        if (pts.length) { const ul = el("ul"); pts.forEach((p) => ul.append(el("li", null, String(p)))); b.append(ul); }
+        if (x.text) b.append(el("p", null, x.text));
+        u.append(b);
+      });
+      c.append(u);
+    }
+    /* explain: [{title, points: [...], text?}]: each an open fenced block with a heading and a short list, shown from Verbose up. */
+    const exps = Array.isArray(q.explain) ? q.explain : [];
+    if (exps.length) {
+      const x = el("div", "explain l2");
+      exps.forEach((b) => {
+        const d = el("details", "upd l2"); d.open = true;
+        d.append(el("summary", null, b.title || "Explanation"));
+        const pts = Array.isArray(b.points) ? b.points : (b.points ? [b.points] : []);
+        if (pts.length) { const ul = el("ul"); pts.forEach((p) => ul.append(el("li", null, String(p)))); d.append(ul); }
+        if (b.text) d.append(el("p", null, b.text));
+        x.append(d);
+      });
+      c.append(x);
+    }
+    if (ctx && ctx !== qtext) {
+      if (ups.length || ctx.length > 600) { const b = el("details", "upd bg l3"); b.append(el("summary", null, "Background (earlier context)"), el("div", "ctx", ctx)); c.append(b); }
+      else c.append(el("div", "ctx l2", ctx));
+    }
+    if (q.items && q.items.rows && q.items.rows.length) c.append(itemList(q, s, off));
+    if (q.checked) c.append(el("div", "checked l2", "Checked before surfacing: " + q.checked));
+    const a = el("div", "answer");
+    if (q.paste) { const p = el("pre", null, q.paste); a.append(p, copyBtn(q.paste)); a.style.display = "grid"; a.style.justifyItems = "start"; }
+    else if (q.items && q.items.rows && q.items.rows.length) { const code = itemAnswer(q, s); a.append(el("code", "ans", code), copyBtn(code)); }
+    else if (q.answer) { a.append(el("code", "ans", q.answer), copyBtn(q.answer)); }
+    c.append(a);
+    const ctl = el("div", "ctl");
+    const pri = el("div", "seg pri"); pri.setAttribute("role", "group"); pri.setAttribute("aria-label", "Priority of " + q.id);
+    [["important", "Important"], ["urgent", "Urgent"]].forEach(([k, t]) => { const b = el("button", null, t); b.type = "button"; b.setAttribute("aria-pressed", s[k] ? "true" : "false"); b.disabled = off; b.addEventListener("click", () => { const p = {}; p[k] = !s[k]; save(q.id, p); }); pri.append(b); });
+    const group = (keys, cls, label) => {
+      const g = el("div", "seg " + cls); g.setAttribute("role", "group"); g.setAttribute("aria-label", label + " " + q.id);
+      keys.forEach((k) => {
+        const t = (k === "started" && s.stage !== "started") ? "Start" : LABEL[k];
+        const b = el("button", null, t); b.type = "button"; b.dataset.s = k; b.setAttribute("aria-pressed", s.stage === k ? "true" : "false"); b.disabled = off;
+        b.addEventListener("click", () => { if (s.stage !== k) save(q.id, { stage: k }, (k === "started" || k === "review" || k === "completed") ? ME : undefined); });
+        g.append(b);
+      });
+      return g;
+    };
+    ctl.append(pri, group(FLOW, "flow", "Stage of"), group(PARKED, "park", "Parked state of"));
+    const lab = el("label", "mrp"); lab.append("MRP ");
+    const inp = el("input"); inp.type = "text"; inp.setAttribute("list", "parties"); inp.value = s.mrp; inp.disabled = off; inp.setAttribute("aria-label", "Most responsible party for " + q.id);
+    inp.addEventListener("change", () => { const v = inp.value.trim(); if (v && v !== s.mrp) save(q.id, { mrp: v }); else inp.value = s.mrp; });
+    lab.append(inp); ctl.append(lab); c.append(ctl);
+    const bits = [LABEL[s.stage] + (s.at ? " since " + fmt(s.at) : ""), "opened " + (q.opened || "date not on this page yet")];
+    if (s.history && s.history.length) bits.push(s.history.length + (s.history.length === 1 ? " change" : " changes") + " on this page");
+    const note = el("div", "statusnote l2", bits.join(" · "));
+    if (s.history && s.history.length) note.title = s.history.map((h) => fmt(h.at) + " " + LABEL[h.stage] + " (" + h.mrp + ")").join("\n");
+    c.append(note);
+    return c;
+  }
+  function cardList(host, countEl, qs) {
+    qs = qs || [];
+    qs.forEach((q) => { CARDS[q.id] = q; DOCKEY[docKey(q.id)] = q.id; if (!STATE[q.id]) STATE[q.id] = normalize(q, null); });
+    if (!qs.length) { countEl.textContent = "none open"; countEl.classList.add("zero"); host.append(el("div", "empty", "Nothing waits on you.")); return; }
+    const bar = el("div", "triage");
+    const mk = (opts, label) => { const sel = el("select"); sel.setAttribute("aria-label", label); opts.forEach(([v, t]) => { const o = el("option", null, t); o.value = v; sel.append(o); }); sel.addEventListener("change", draw); return sel; };
+    const search = el("input"); search.type = "search"; search.placeholder = "Search cards"; search.setAttribute("aria-label", "Search cards"); search.addEventListener("input", draw);
+    const stageSel = mk([["active", "Active (not completed or superseded)"], ["all", "All stages"]].concat(STAGES), "Filter by stage");
+    const quadSel = mk([["all", "All quadrants"]].concat(QUADS), "Filter by quadrant");
+    const mrpSel = mk([["all", "Any MRP"]], "Filter by most responsible party");
+    const sortSel = mk([["rank", "Rank: quadrant, then oldest"], ["oldest", "Oldest first"], ["newest", "Newest first"], ["stage", "By stage"]], "Sort");
+    const list = el("div", "cards");
+    bar.append(search, stageSel, quadSel, mrpSel, sortSel); host.append(bar, list);
+    function draw() {
+      const mrps = Array.from(new Set(qs.map((q) => STATE[q.id].mrp))).sort();
+      const cur = mrpSel.value; mrpSel.replaceChildren();
+      [["all", "Any MRP"]].concat(mrps.map((m) => [m, "MRP: " + m])).forEach(([v, t]) => { const o = el("option", null, t); o.value = v; mrpSel.append(o); });
+      mrpSel.value = mrps.includes(cur) ? cur : "all";
+      const text = search.value.trim().toLowerCase();
+      const view = qs.filter((q) => {
+        const s = STATE[q.id];
+        if (stageSel.value === "active" ? CLOSED.includes(s.stage) : (stageSel.value !== "all" && s.stage !== stageSel.value)) return false;
+        if (quadSel.value !== "all" && quadOf(s) !== quadSel.value) return false;
+        if (mrpSel.value !== "all" && s.mrp !== mrpSel.value) return false;
+        if (text && !(q.id + " " + (q.title || "") + " " + (q.question || "") + " " + q.ask + " " + (q.context || "") + " " + (q.origin ? originText(q.origin) : "") + " " + (q.dflt || "") + " " + s.mrp + " " + (q.seat || "")).toLowerCase().includes(text)) return false;
+        return true;
+      });
+      const qrank = (q) => QUADS.findIndex(([k]) => k === quadOf(STATE[q.id]));
+      const srank = (q) => STAGES.findIndex(([k]) => k === STATE[q.id].stage);
+      const by = sortSel.value;
+      view.sort((x, y) => by === "oldest" ? ageKey(x).localeCompare(ageKey(y)) : by === "newest" ? ageKey(y).localeCompare(ageKey(x)) : by === "stage" ? ((srank(x) - srank(y)) || ageKey(x).localeCompare(ageKey(y))) : ((qrank(x) - qrank(y)) || ageKey(x).localeCompare(ageKey(y))));
+      const active = qs.filter((q) => !CLOSED.includes(STATE[q.id].stage)).length;
+      countEl.textContent = active ? active + " active" : "none active"; countEl.classList.toggle("zero", !active);
+      /* Deferred cards sit in their own group so they never outrank live ones. Within each group the chosen sort holds. */
+      const TAIL = ["deferred", "superseded", "completed"];
+      const gi = (q) => TAIL.indexOf(STATE[q.id].stage) + 1;
+      view.sort((x, y) => gi(x) - gi(y));
+      const out = []; let lastG = 0;
+      view.forEach((q) => { const g = gi(q); if (g && g !== lastG) { const n = view.filter((v) => gi(v) === g).length; out.push(el("h3", "group", LABEL[TAIL[g - 1]] + " (" + n + ")")); } lastG = g; out.push(card(q)); });
+      list.replaceChildren(...out);
+      if (!view.length) list.append(el("div", "empty", "No card matches these filters."));
+    }
+    REDRAW.push(draw); draw();
+  }
+  /* The one Parley tab: every crew question is a card here, tagged with the seat that asked it. */
+  const ALLQ = (DATA.questions || []).map((q) => Object.assign({ from: DATA.seat }, q))
+    .concat(reports.flatMap((r) => (r.questions || []).map((q) => Object.assign({ from: r.seat, seat: r.seat }, q))));
+  function summary() {
+    const st = { active: 0, q1: 0, blocked: 0, started: 0, review: 0, mine: 0 };
+    ALLQ.forEach((q) => { const s = STATE[q.id]; if (!s || CLOSED.includes(s.stage)) return; st.active++; if (quadOf(s) === "q1") st.q1++; if (s.stage === "blocked") st.blocked++; if (s.stage === "started") st.started++; if (s.stage === "review") st.review++; if (s.mrp === ME) st.mine++; });
+    const host = $("session"); host.replaceChildren();
+    host.append(st.active + " active cards: " + st.q1 + " important + urgent, " + st.blocked + " blocked, " + st.started + " started, " + st.review + " in review, " + st.mine + " on " + ME + " · crew " + awake.length + " awake, " + sleepers.length + " asleep");
+    if (DATA.session_uuid) { host.append(" · session "); host.append(el("code", null, DATA.session_uuid), copyBtn(DATA.session_uuid)); }
+    $("qbadge").textContent = st.active ? String(st.active) : "";
+  }
+  /* Delegation: a page whose questions moved to a manager keeps its history and opens with a pointer to the manager's page. */
+  if (DATA.delegated && DATA.delegated.to) {
+    const g = $("delegated"); g.hidden = false;
+    g.append(el("h2", null, "Parley delegated to " + DATA.delegated.to + (DATA.delegated.at ? " on " + DATA.delegated.at : "")));
+    const p = el("p"); p.append("New questions for this seat now appear on " + DATA.delegated.to + "'s parley, in this seat's tab. Everything below is this page's history. ");
+    if (DATA.delegated.url) { const a = el("a", null, "Open " + DATA.delegated.to + "'s parley"); a.href = DATA.delegated.url; a.target = "_blank"; a.rel = "noopener"; p.append(a); }
+    g.append(p);
+  }
+  cardList($("questions"), $("qcount"), ALLQ); summary();
+  /* Artifact header. Status comes from heartbeat/owner in the page's db when the session writes it, else from the next tick this page was published with. A headless page (DATA.headless) is never watched. */
+  (function () {
+    const box = $("ah"); if (!box) return;
+    /* one palette, "default", set by the theme code above */
+    $("ah-seat").textContent = DATA.seat || "?";
+    $("ah-uuid").textContent = DATA.session_uuid || "session UUID not recorded";
+    $("ah-home").textContent = DATA.account ? DATA.account + " account" : "";
+    $("ah-mode").textContent = DATA.headless ? "published headless" : "published from a live session" + (DATA.updated ? " " + DATA.updated : "");
+    const grey = "No live session watches comments here. A comment sent to Claude would open a new session with no context; ask in " + (DATA.seat || "the seat") + "'s window instead.";
+    const show = (s, t, n) => { box.setAttribute("data-live", s); $("ah-status").textContent = t; $("ah-note").textContent = n || ""; };
+    const per = +(DATA.loop_period_min || 50);
+    function judge(seen, next, watching) {
+      const now = Date.now();
+      if (watching === false) return show("grey", "Author not watching", grey);
+      if (next && now <= next + 10 * 60000) return show("live", "Author live: watches comments", "Next check " + new Date(next).toTimeString().slice(0, 5) + "; a comment sent to Claude reaches it.");
+      const ref = seen || next;
+      if (ref && now <= ref + 3 * per * 60000) return show("idle", "Author idle", "Its loop is overdue; a comment sent to Claude reaches it only if its window is still open.");
+      show("grey", "Author gone quiet", grey);
+    }
+    function parseT(s) {
+      if (!s) return null; const m = String(s).match(/(\d{4}-\d{2}-\d{2})?[ T]?(\d{1,2}):(\d{2})/); if (!m) return null;
+      const d = m[1] ? new Date(m[1] + "T00:00:00") : new Date(); d.setHours(+m[2], +m[3], 0, 0);
+      if (!m[1] && d.getTime() < Date.now() - 12 * 3600000) d.setDate(d.getDate() + 1); return d.getTime();
+    }
+    if (DATA.headless) { show("grey", "Published headless: not watched", grey); return; }
+    judge(parseT(DATA.updated), parseT(DATA.next_tick), undefined);
+    (async () => {
+      try {
+        const db = window.claude && window.claude.use ? await window.claude.use("db") : null; if (!db) return;
+        db.doc("heartbeat/owner").onSnapshot((s) => { if (!s.exists) return; const h = s.data() || {};
+          judge(h.last_seen ? Date.parse(h.last_seen) : null, h.last_seen ? Date.parse(h.last_seen) + (+(h.period_min || per)) * 60000 : null, h.watching_comments); }, () => {});
+      } catch (e) {}
+    })();
+  })();
+  /* Feedback for the parley skill, accumulated on this page. */
+  (function () {
+    const fb = DATA.skill_feedback || []; const ol = $("feedback-list");
+    if (!fb.length) { $("feedback").hidden = true; return; }
+    fb.forEach((f) => ol.append(el("li", null, f)));
+    const text = "Parley skill feedback from " + ME + ", " + (DATA.updated || "") + ", collected on " + (DATA.parley_url || "the parley page") + ":\n" + fb.map((f, i) => (i + 1) + ". " + f).join("\n");
+    $("feedback-copy").append(copyBtn(text));
+  })();
+  /* Activity log: no per-row token figure; the text takes the room. Tokens for the last turn sit in the Last turn toggle. */
+  function log(target, items) {
+    if (!items || !items.length) { target.replaceWith(el("div", "empty", "Nothing yet.")); return; }
+    items.forEach((it) => {
+      const li = el("li"); li.append(el("time", null, it.when));
+      const d = rich(null, it.what, it.steps); if (it.where) d.append(el("span", "where", it.where)); li.append(d); target.append(li);
+    });
+  }
+  log($("activity"), DATA.activity); log($("changes"), DATA.changes);
+  function table(host, spec, key) {
+    if (!spec || !spec.rows || !spec.rows.length) { host.append(el("div", "empty", "Nothing yet.")); return; }
+    const tools = el("div", "tools"); const f = el("input"); f.type = "search"; f.id = "filter-" + key; f.placeholder = "Filter rows"; f.setAttribute("aria-label", "Filter rows"); tools.append(f);
+    const box = el("div", "tablebox"); const t = el("table"); const th = el("thead"); const hr = el("tr"); const tb = el("tbody");
+    let rows = spec.rows.slice(), sortCol = -1, dir = 1;
+    spec.columns.forEach((name, i) => {
+      const h = el("th", null, name); h.tabIndex = 0;
+      const go = () => { dir = sortCol === i ? -dir : 1; sortCol = i; hr.querySelectorAll("th").forEach((x) => x.removeAttribute("aria-sort")); h.setAttribute("aria-sort", dir > 0 ? "ascending" : "descending"); draw(); };
+      h.addEventListener("click", go); h.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+      hr.append(h);
+    });
+    function draw() {
+      const q = f.value.trim().toLowerCase();
+      let view = rows.filter((r) => !q || r.join(" ").toLowerCase().includes(q));
+      if (sortCol >= 0) view = view.slice().sort((a, b) => String(a[sortCol]).localeCompare(String(b[sortCol]), undefined, { numeric: true }) * dir);
+      tb.replaceChildren(...view.map((r) => {
+        const tr = el("tr");
+        r.forEach((v) => {
+          const td = el("td");
+          if (/^https:\/\/\S+$/.test(String(v))) { const a = el("a", null, String(v).replace(/^https:\/\//, "")); a.href = v; a.target = "_blank"; a.rel = "noopener"; td.append(a); }
+          else td.textContent = v;
+          tr.append(td);
+        });
+        return tr;
+      }));
+    }
+    f.addEventListener("input", draw);
+    th.append(hr); t.append(th, tb); box.append(t); host.append(tools, box); draw();
+  }
+  table($("work"), DATA.work, "work"); table($("decisions"), DATA.decisions, "decisions");
+  table($("artifacts"), DATA.artifacts, "artifacts");
+  const arts = (DATA.artifacts && DATA.artifacts.rows) || [];
+  $("acount").textContent = arts.length ? String(arts.length) : "";
+  const tabs = { parley: [$("tab-parley"), $("panel-parley")], crew: [$("tab-crew"), $("panel-crew")], sleepers: [$("tab-sleepers"), $("panel-sleepers")], artifacts: [$("tab-artifacts"), $("panel-artifacts")], changes: [$("tab-changes"), $("panel-changes")] };
+  /* Crew and Sleepers: no tab per report. Each awake seat is a block on the Crew tab; a mothballed or idle seat is a block on the Sleepers tab. Both compile from <SEAT>_PARLEY.json; a seat's questions are cards on the Parley tab. */
+  function seatBlock(r, i, open) {
+    const d = el("details", "seat"); d.open = open;
+    const sm = el("summary"); sm.append(el("b", null, r.seat || "report"));
+    if (r.phase) sm.append(el("span", "phase", r.phase)); d.append(sm);
+    if (r.mothball && r.mothball.relaunch) d.append(relaunchBox(r.mothball, (r.seat || "This seat") + " is mothballed" + (r.mothball.at ? " since " + r.mothball.at : "") + ". To reawaken it:"));
+    const strip = el("div", "strip");
+    [["version", r.version], ["updated", r.updated], ["loop", r.loop], ["capacity", r.capacity], ["remote control", r.remote_control], ["account", r.account]].forEach(([k, v]) => { if (v) { const c = el("span", "chip"); c.append(k + " "); c.append(el("b", null, v)); strip.append(c); } });
+    d.append(strip);
+    const act = el("section"); const ol = el("ol", "log"); act.append(el("h3", null, "What it has been doing"), ol); d.append(act); log(ol, r.activity);
+    const work = el("section"); const wh = el("div"); work.append(el("h3", null, "State of the work"), wh); d.append(work); table(wh, r.work, "seat-" + i);
+    return d;
+  }
+  awake.forEach((r, i) => $("crew").append(seatBlock(r, i, true)));
+  sleepers.forEach((r, i) => $("sleepers").append(seatBlock(r, 100 + i, false)));
+  if (!awake.length) $("crew").append(el("div", "empty", "No seat is awake on the crew."));
+  if (!sleepers.length) $("sleepers").append(el("div", "empty", "Nobody is asleep."));
+  $("ccount").textContent = awake.length ? String(awake.length) : ""; $("scount").textContent = sleepers.length ? String(sleepers.length) : "";
+  function show(name) {
+    if (!tabs[name]) name = "parley";
+    Object.entries(tabs).forEach(([k, [b, p]]) => { const on = k === name; b.setAttribute("aria-selected", on ? "true" : "false"); p.hidden = !on; });
+    try { localStorage.setItem("parley-tab", name); } catch (e) {}
+  }
+  Object.entries(tabs).forEach(([k, [b]]) => b.addEventListener("click", () => show(k)));
+  /* Version 2.7: detail rail. Buttons, the range, the scroll wheel over the rail and arrow keys move it; remembered per browser. */
+  (function () {
+    const NAMES = ["zero", "concise", "verbose", "exhaustive"]; let lvl = 1; const rail = $("rail"), range = $("lvlrange");
+    if (!rail || !range) return;
+    function setLvl(n, save) {
+      n = Math.max(0, Math.min(3, n | 0)); lvl = n; document.body.setAttribute("data-lvl", String(n)); range.value = String(n);
+      rail.querySelectorAll("[data-lvl]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lvl) === String(n) ? "true" : "false"));
+      if (save) { try { localStorage.setItem("parley-detail", NAMES[n]); } catch (e) {} }
+    }
+    rail.addEventListener("click", (ev) => { const b = ev.target.closest("[data-lvl]"); if (b) setLvl(+b.dataset.lvl, true); });
+    range.addEventListener("input", () => setLvl(+range.value, true));
+    rail.addEventListener("wheel", (ev) => { ev.preventDefault(); setLvl(lvl + (ev.deltaY < 0 ? 1 : -1), true); }, { passive: false });
+    let start = 1; try { const sv = localStorage.getItem("parley-detail"); if (sv && NAMES.indexOf(sv) >= 0) start = NAMES.indexOf(sv); } catch (e) {}
+    setLvl(start, false);
+  })();
+  let first = (location.hash || "").replace("#", "");
+  if (!tabs[first]) { try { first = localStorage.getItem("parley-tab") || "parley"; } catch (e) { first = "parley"; } }
+  show(first);
+  (async () => {
+    try { DB = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch (e) { DB = null; }
+    const note = $("statusnote");
+    if (!DB) { if (note) note.textContent = "Ratings, stages and MRP are read-only in this view."; return; }
+    paintAll();
+    DB.collection("status").onSnapshot((snap) => { snap.docs.forEach((d) => { const cid = DOCKEY[d.id] || d.id; if (CARDS[cid]) STATE[cid] = normalize(CARDS[cid], d.data() || {}); }); paintAll(); },
+      () => { if (note) note.textContent = "Ratings and stages could not be loaded in this view."; });
+  })();
+})();
+</script>
+
+</body></html>

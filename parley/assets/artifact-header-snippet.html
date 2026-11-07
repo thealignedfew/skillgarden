@@ -1,0 +1,122 @@
+<!-- Artifact header for any page a Claude Code session publishes. It carries four things: who wrote the page (the session's name and
+     full id), whether that session is live to answer comments, whether the page was published headless, and a detail rail
+     (Zero, Concise, Verbose, Exhaustive). It also carries the page theme: a palette named "default", with a Theme menu of
+     Auto (follows the browser, the default), Dark and Light, always high contrast: every text color is at least 7:1 on the
+     background and the surface, and every border at least 3:1.
+     Copy all three parts; put the style block after the page's own color tokens so the palette wins, and use the
+     tokens --bg --surface --fg --muted --line --accent --accent-soft --ask --ask-soft --ok for the page's own colors:
+       1. the style block;
+       2. the markup, first thing in the page content (before the page's own header);
+       3. the script, at the end of the page. Fill AH: seat (the session's name), session (its full id), headless, questions.
+     Tag page elements l1, l2 or l3 for the lowest detail level that shows them (untagged shows always) and say in one
+     line near the top what each level adds. Live status reads heartbeat/owner from the page's own db (declare the db
+     capability); the owning session writes it on every check-in. Without db, or for a headless page, the bubble says no
+     session is watching. -->
+<style>
+/* Palette "default" (data-ws). Auto follows the viewer's browser setting; Dark and Light pick the palette. */
+:root[data-ws="default"] { --bg: #f7f8fa; --surface: #ffffff; --fg: #141414; --muted: #454545; --line: #6b7280; --accent: #0f4a80; --accent-soft: #e3ecf5; --ask: #951a0a; --ask-soft: #fbe6e3; --ok: #235521; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root[data-ws="default"]:not([data-ptheme="light"]):not([data-theme="light"]) { --bg: #000000; --surface: #0d1117; --fg: #ffffff; --muted: #c8c8c8; --line: #8b949e; --accent: #6db8ff; --accent-soft: #0b2744; --ask: #f38518; --ask-soft: #3a1f05; --ok: #89d185; color-scheme: dark; } }
+:root[data-ws="default"][data-ptheme="dark"], :root[data-ws="default"][data-theme="dark"]:not([data-ptheme="light"]) { --bg: #000000; --surface: #0d1117; --fg: #ffffff; --muted: #c8c8c8; --line: #8b949e; --accent: #6db8ff; --accent-soft: #0b2744; --ask: #f38518; --ask-soft: #3a1f05; --ok: #89d185; color-scheme: dark; }
+.themepick { font: 12px/1 inherit; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+.themepick select, .ah select { font: 12px inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+html, body { background: var(--bg); color: var(--fg); }
+.ah { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font: 12.5px/1.45 var(--body, inherit); color: var(--muted, #666); border: 1px solid var(--line, #ccc); border-radius: 10px; padding: 7px 12px; margin: 10px 0; background: var(--surface, transparent); }
+.ah b { color: var(--fg, inherit); font-weight: 600; }
+.ah .ah-uuid { font-family: var(--mono, ui-monospace, Consolas, monospace); font-size: 11.5px; overflow-wrap: anywhere; }
+.ah .ah-st { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--fg, inherit); }
+.ah .ah-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted, #999); flex: none; }
+.ah[data-live="live"] .ah-dot { background: var(--ok, #2d6a2a); }
+.ah[data-live="idle"] .ah-dot { background: var(--accent, #b07a00); }
+.ah[data-live="grey"] .ah-dot { background: var(--muted, #999); }
+.ah .ah-note { flex-basis: 100%; font-size: 12px; }
+.ah a { color: var(--accent, inherit); }
+.ah-rail { position: fixed; left: 8px; top: 50%; transform: translateY(-50%); z-index: 20; display: grid; gap: 6px; justify-items: center; background: var(--surface, var(--bg, #fff)); border: 1px solid var(--line, #ccc); border-radius: 12px; padding: 10px 6px; width: 96px; box-shadow: 0 2px 12px rgba(0,0,0,.10); }
+.ah-rail .t { font: 600 10px/1 var(--mono, monospace); letter-spacing: .08em; text-transform: uppercase; color: var(--muted, #666); }
+.ah-rail input[type="range"] { writing-mode: vertical-lr; direction: rtl; width: 22px; height: 110px; accent-color: var(--accent, #555); margin: 2px 0; cursor: ns-resize; }
+.ah-rail .lv { display: grid; gap: 2px; width: 100%; }
+.ah-rail .lv button { font: 500 11.5px/1.2 inherit; border: 1px solid transparent; background: transparent; color: var(--muted, #666); border-radius: 6px; padding: 3px 4px; cursor: pointer; }
+.ah-rail .lv button[aria-pressed="true"] { background: var(--accent, #555); color: var(--bg, #fff); font-weight: 600; }
+.ah-rail .hint { font-size: 10px; color: var(--muted, #666); text-align: center; line-height: 1.25; }
+@media (max-width: 1140px) { .ah-rail { position: static; transform: none; width: auto; grid-auto-flow: column; align-items: center; gap: 10px; padding: 6px 10px; box-shadow: none; margin: 8px 0; } .ah-rail input[type="range"] { writing-mode: horizontal-tb; direction: ltr; width: 110px; height: 22px; cursor: ew-resize; } .ah-rail .lv { grid-auto-flow: column; } .ah-rail .hint { display: none; } }
+body[data-lvl="0"] .l1, body[data-lvl="0"] .l2, body[data-lvl="0"] .l3, body[data-lvl="1"] .l2, body[data-lvl="1"] .l3, body[data-lvl="2"] .l3 { display: none !important; }
+</style>
+
+<div class="ah" id="ah" data-artifact-header="1" data-live="grey" role="note" aria-label="Who made this page and whether it is watched">
+  <span class="ah-st"><span class="ah-dot" aria-hidden="true"></span><span id="ah-status">Author status unknown</span></span>
+  <span>Authored by <b id="ah-seat">?</b> <span class="ah-uuid" id="ah-uuid"></span></span>
+  <span id="ah-home"></span>
+  <span id="ah-mode"></span>
+  <span id="ah-qwrap">Questions: <a id="ah-q" href="#" target="_blank" rel="noopener">its parley page</a></span>
+  <label class="themepick">Theme <select id="ws-theme" data-ws-theme aria-label="Theme"><option value="auto">Auto</option><option value="dark">Dark</option><option value="light">Light</option></select></label>
+  <span class="ah-note" id="ah-note"></span>
+</div>
+<div class="ah-rail" id="ah-rail" role="group" aria-label="Level of detail">
+  <span class="t">Detail</span>
+  <div class="lv">
+    <button type="button" data-lvl="3" aria-pressed="false">Exhaustive</button>
+    <button type="button" data-lvl="2" aria-pressed="false">Verbose</button>
+    <button type="button" data-lvl="1" aria-pressed="true">Concise</button>
+    <button type="button" data-lvl="0" aria-pressed="false">Zero</button>
+  </div>
+  <input type="range" id="ah-lvl" min="0" max="3" step="1" value="1" aria-label="Level of detail">
+  <span class="hint">scroll here or click</span>
+</div>
+
+<script>
+/* Fill these when publishing. session is the authoring session's full id; headless is true when the page was
+   published by a script (claude -p), where no session is woken by comments. */
+var AH = { seat: "my-session", session: "00000000-0000-0000-0000-000000000000", account: "", headless: false,
+           questions: "", published: "YYYY-MM-DD HH:MM UTC", period_min: 50 };
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var box = $("ah");
+  /* theme: Auto (default) follows the viewer's browser, Dark and Light pick the palette */
+  var root = document.documentElement, pick = $("ws-theme"), tv = "auto";
+  root.setAttribute("data-ws", "default");
+  try { tv = localStorage.getItem("parley-theme") || "auto"; } catch (e) {}
+  if (["auto", "dark", "light"].indexOf(tv) < 0) tv = "auto";
+  function applyTheme(x) { if (x === "auto") root.removeAttribute("data-ptheme"); else root.setAttribute("data-ptheme", x); }
+  applyTheme(tv);
+  if (pick) { pick.value = tv; pick.addEventListener("change", function () { applyTheme(pick.value); try { localStorage.setItem("parley-theme", pick.value); } catch (e) {} }); }
+  $("ah-seat").textContent = AH.seat;
+  $("ah-uuid").textContent = AH.session;
+  $("ah-home").textContent = AH.account ? AH.account + " account" : "";
+  $("ah-mode").textContent = (AH.headless ? "published headless" : "published from a live session") + (AH.published ? " " + AH.published : "");
+  if (AH.questions) $("ah-q").href = AH.questions; else $("ah-qwrap").hidden = true;
+  var ask = AH.questions ? " Ask on " + AH.seat + "'s parley instead." : "";
+  function show(state, text, note) { box.setAttribute("data-live", state); $("ah-status").textContent = text; $("ah-note").textContent = note || ""; }
+  function hhmm(d) { return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
+  var grey = "No live session watches comments here. A comment sent to Claude would open a new session with no context." + ask;
+  if (AH.headless) { show("grey", "Published headless: not watched", grey); }
+  else { show("grey", "Checking the author", ""); }
+  function judge(hb) {
+    if (!hb || !hb.last_seen) { show("grey", "Author not watching", grey); return; }
+    var seen = new Date(hb.last_seen), per = +(hb.period_min || AH.period_min || 50), age = (Date.now() - seen) / 60000;
+    if (hb.watching_comments === false) { show("grey", "Author not watching", grey); }
+    else if (age <= per + 10) { show("live", "Author live: watches comments", (hb.title || AH.seat) + " last checked in " + hhmm(seen) + "; a comment sent to Claude reaches it" + (hb.next_tick ? ", next check " + hb.next_tick : "") + "."); }
+    else if (age <= per * 3) { show("idle", "Author idle since " + hhmm(seen), "A comment sent to Claude reaches it when it next wakes; a reply may wait." + ask); }
+    else { show("grey", "Author gone quiet since " + hhmm(seen), grey); }
+  }
+  if (!AH.headless) {
+    (async function () {
+      var db = null;
+      try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch (e) { db = null; }
+      if (!db) { show("grey", "Author status not wired on this page", grey); return; }
+      try { db.doc("heartbeat/owner").onSnapshot(function (s) { judge(s.exists ? s.data() : null); }, function () { judge(null); }); }
+      catch (e) { judge(null); }
+    })();
+  }
+  /* detail rail: buttons, the range, the scroll wheel over the rail and arrow keys; remembered per browser */
+  var NAMES = ["zero", "concise", "verbose", "exhaustive"], lvl = 1, rail = $("ah-rail"), range = $("ah-lvl");
+  function setLvl(n, save) {
+    n = Math.max(0, Math.min(3, n | 0)); lvl = n; document.body.setAttribute("data-lvl", String(n)); range.value = String(n);
+    rail.querySelectorAll("[data-lvl]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.lvl) === String(n) ? "true" : "false"); });
+    if (save) { try { localStorage.setItem("parley-detail", NAMES[n]); } catch (e) {} }
+  }
+  rail.addEventListener("click", function (ev) { var b = ev.target.closest("[data-lvl]"); if (b) setLvl(+b.dataset.lvl, true); });
+  range.addEventListener("input", function () { setLvl(+range.value, true); });
+  rail.addEventListener("wheel", function (ev) { ev.preventDefault(); setLvl(lvl + (ev.deltaY < 0 ? 1 : -1), true); }, { passive: false });
+  var start = 1; try { var sv = localStorage.getItem("parley-detail"); if (sv && NAMES.indexOf(sv) >= 0) start = NAMES.indexOf(sv); } catch (e) {}
+  setLvl(start, false);
+})();
+</script>
