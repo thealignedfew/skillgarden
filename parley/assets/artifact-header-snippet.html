@@ -3,15 +3,19 @@
      (Zero, Concise, Verbose, Exhaustive). It also carries the page theme: a palette named "default", with a Theme menu of
      Auto (follows the browser, the default), Dark and Light, always high contrast: every text color is at least 7:1 on the
      background and the surface, and every border at least 3:1.
-     Copy all three parts; put the style block after the page's own color tokens so the palette wins, and use the
+     Copy parts 1 to 3; put the style block after the page's own color tokens so the palette wins, and use the
      tokens --bg --surface --fg --muted --line --accent --accent-soft --ask --ask-soft --ok for the page's own colors:
        1. the style block;
        2. the markup, first thing in the page content (before the page's own header);
-       3. the script, at the end of the page. Fill AH: seat (the session's name), session (its full id), headless, questions.
+       3. the script, at the end of the page. Fill AH: seat (the session's name), session (its full id), account,
+          headless, questions.
+     Part 4 is the Log tab scaffold at the end of this file, between its BEGIN and END marks. It is the standard for every
+     artifact page that is not a parley; a page without it works as before. Its own comment says how to use it.
      Tag page elements l1, l2 or l3 for the lowest detail level that shows them (untagged shows always) and say in one
-     line near the top what each level adds. Live status reads heartbeat/owner from the page's own db (declare the db
-     capability); the owning session writes it on every check-in. Without db, or for a headless page, the bubble says no
-     session is watching. -->
+     line near the top what each level adds. The rail can sit on the left edge or pinned across the top (the reader's
+     choice, remembered per browser), and "detail: false" in AH leaves it out for a page too small to need levels.
+     Live status reads heartbeat/owner from the page's own db (declare the db capability); the owning session writes it on
+     every check-in. Without db, or for a headless page, the bubble says no session is watching. -->
 <style>
 /* Palette "default" (data-ws). Auto follows the viewer's browser setting; Dark and Light pick the palette. */
 :root[data-ws="default"] { --bg: #f7f8fa; --surface: #ffffff; --fg: #141414; --muted: #454545; --line: #6b7280; --accent: #0f4a80; --accent-soft: #e3ecf5; --ask: #951a0a; --ask-soft: #fbe6e3; --ok: #235521; color-scheme: light; }
@@ -38,6 +42,14 @@ html, body { background: var(--bg); color: var(--fg); }
 .ah-rail .lv button[aria-pressed="true"] { background: var(--accent, #555); color: var(--bg, #fff); font-weight: 600; }
 .ah-rail .hint { font-size: 10px; color: var(--muted, #666); text-align: center; line-height: 1.25; }
 @media (max-width: 1140px) { .ah-rail { position: static; transform: none; width: auto; grid-auto-flow: column; align-items: center; gap: 10px; padding: 6px 10px; box-shadow: none; margin: 8px 0; } .ah-rail input[type="range"] { writing-mode: horizontal-tb; direction: ltr; width: 110px; height: 22px; cursor: ew-resize; } .ah-rail .lv { grid-auto-flow: column; } .ah-rail .hint { display: none; } }
+.ah-rail[hidden] { display: none; }
+.ah-rail .railpos { font-weight: 600; font-size: 10.5px; line-height: 1.2; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 6px; padding: 3px 4px; cursor: pointer; }
+/* Pin to top (viewer choice, localStorage parley-railpos): the narrow-screen horizontal layout, applied on desktop under html[data-railpos="top"] */
+html[data-railpos="top"] .ah-rail { position: static; transform: none; width: auto; grid-auto-flow: column; align-items: center; gap: 10px; padding: 6px 10px; box-shadow: none; margin: 8px 0; }
+html[data-railpos="top"] .ah-rail input[type="range"] { writing-mode: horizontal-tb; direction: ltr; width: 110px; height: 22px; cursor: ew-resize; }
+html[data-railpos="top"] .ah-rail .lv { grid-auto-flow: column; }
+html[data-railpos="top"] .ah-rail .hint { display: none; }
+@media (max-width: 1140px) { .ah-rail .railpos { display: none; } }
 body[data-lvl="0"] .l1, body[data-lvl="0"] .l2, body[data-lvl="0"] .l3, body[data-lvl="1"] .l2, body[data-lvl="1"] .l3, body[data-lvl="2"] .l3 { display: none !important; }
 </style>
 
@@ -65,6 +77,7 @@ body[data-lvl="0"] .l1, body[data-lvl="0"] .l2, body[data-lvl="0"] .l3, body[dat
 <script>
 /* Fill these when publishing. session is the authoring session's full id; headless is true when the page was
    published by a script (claude -p), where no session is woken by comments. */
+/* detail: false turns the detail rail off and shows everything (level 3); use it for pages too small to need levels, such as a one-line moved notice. Absent or true keeps the rail. */
 var AH = { seat: "my-session", session: "00000000-0000-0000-0000-000000000000", account: "", headless: false,
            questions: "", published: "YYYY-MM-DD HH:MM UTC", period_min: 50 };
 (function () {
@@ -108,6 +121,7 @@ var AH = { seat: "my-session", session: "00000000-0000-0000-0000-000000000000", 
   }
   /* detail rail: buttons, the range, the scroll wheel over the rail and arrow keys; remembered per browser */
   var NAMES = ["zero", "concise", "verbose", "exhaustive"], lvl = 1, rail = $("ah-rail"), range = $("ah-lvl");
+  if (AH.detail === false) { rail.hidden = true; document.body.setAttribute("data-lvl", "3"); return; } /* per-page off switch: no rail, level 3 */
   function setLvl(n, save) {
     n = Math.max(0, Math.min(3, n | 0)); lvl = n; document.body.setAttribute("data-lvl", String(n)); range.value = String(n);
     rail.querySelectorAll("[data-lvl]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.lvl) === String(n) ? "true" : "false"); });
@@ -118,5 +132,124 @@ var AH = { seat: "my-session", session: "00000000-0000-0000-0000-000000000000", 
   rail.addEventListener("wheel", function (ev) { ev.preventDefault(); setLvl(lvl + (ev.deltaY < 0 ? 1 : -1), true); }, { passive: false });
   var start = 1; try { var sv = localStorage.getItem("parley-detail"); if (sv && NAMES.indexOf(sv) >= 0) start = NAMES.indexOf(sv); } catch (e) {}
   setLvl(start, false);
+  var pos = "side"; try { if (localStorage.getItem("parley-railpos") === "top") pos = "top"; } catch (e) {}
+  var pinb = document.createElement("button"); pinb.type = "button"; pinb.className = "railpos"; rail.appendChild(pinb);
+  function setPos(p, save) { pos = p; root.setAttribute("data-railpos", p); pinb.textContent = p === "top" ? "Pin to side" : "Pin to top"; pinb.setAttribute("aria-pressed", p === "top" ? "true" : "false"); if (save) { try { localStorage.setItem("parley-railpos", p); } catch (e) {} } }
+  pinb.addEventListener("click", function () { setPos(pos === "top" ? "side" : "top", true); });
+  setPos(pos, false);
 })();
 </script>
+
+<!-- ===== BEGIN Log tab scaffold (part 4 of this snippet). =====
+     The standard: every artifact page that is not a parley carries a Log tab, so that other readers can see what was asked and
+     decided: each question or comment in the asker's own words, the answer and what changed, newest first, then a version
+     history. A parley does not carry it: its conversations live on its cards.
+     How to use it:
+       1. Put the three blocks below (style, markup, script) after the artifact header markup. Move the page's own content
+          inside <div id="ah-panel-main">; nothing else about the page changes.
+       2. Fill AHLOG. qa holds one entry per question or comment, newest first: when, who asked, the question in
+          their own words, the answer, and what changed on the page (name the version). versions holds one row per published
+          version, newest first.
+       3. Update AHLOG in the same publish that answers the comment. The address of the page with #log at its end opens the Log.
+     Keep off the Log anything the page's readers should not see: it is as public as the page. -->
+<style>
+.ah-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; border-bottom: 2px solid var(--line, #ccc); }
+.ah-tabs button { font: inherit; font-size: .95rem; padding: 8px 14px; border: 1px solid var(--line, #ccc); border-bottom: 0; border-radius: 8px 8px 0 0; background: var(--surface, transparent); color: var(--fg, inherit); cursor: pointer; }
+.ah-tabs button[aria-selected="true"] { background: var(--accent, #555); color: var(--bg, #fff); font-weight: 700; }
+.ah-tabs button:focus-visible, .ah-log input:focus-visible, .ah-log th:focus-visible { outline: 2px solid var(--accent, #555); outline-offset: 2px; }
+.ah-tabs .n { font-size: .8em; margin-left: 6px; opacity: .85; }
+.ah-log { display: grid; gap: 14px; }
+.ah-log h2, .ah-log h3 { margin: 0; }
+.ah-log .lead, .ah-log .none { color: var(--muted, #666); margin: 0; }
+.ah-log input[type=search] { width: 100%; box-sizing: border-box; font: inherit; padding: 7px 10px; border: 1px solid var(--line, #ccc); border-radius: 6px; background: var(--surface, transparent); color: var(--fg, inherit); }
+.ah-log ol.qa { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ah-log ol.qa li { border: 1px solid var(--line, #ccc); border-radius: 8px; padding: 10px 14px; background: var(--surface, transparent); display: grid; gap: 6px; min-width: 0; }
+.ah-log .meta { font-size: .85em; color: var(--muted, #666); }
+.ah-log .q { white-space: pre-wrap; overflow-wrap: anywhere; border-left: 3px solid var(--ask, #a35f00); padding-left: 10px; font-weight: 600; }
+.ah-log .a, .ah-log .c { overflow-wrap: anywhere; }
+.ah-log .lbl { font-weight: 600; color: var(--muted, #666); }
+.ah-log .box { overflow-x: auto; border: 1px solid var(--line, #ccc); border-radius: 8px; background: var(--surface, transparent); }
+.ah-log table { border-collapse: collapse; width: 100%; }
+.ah-log th, .ah-log td { text-align: left; padding: 8px 12px; border-top: 1px solid var(--line, #ccc); vertical-align: top; }
+.ah-log thead th { border-top: 0; cursor: pointer; user-select: none; white-space: nowrap; }
+.ah-log thead th[aria-sort=ascending]::after { content: " \2191"; }
+.ah-log thead th[aria-sort=descending]::after { content: " \2193"; }
+</style>
+
+<nav class="ah-tabs" role="tablist" aria-label="Page sections">
+  <button type="button" role="tab" id="ah-tab-main" aria-controls="ah-panel-main" aria-selected="true">Page</button>
+  <button type="button" role="tab" id="ah-tab-log" aria-controls="ah-panel-log" aria-selected="false" tabindex="-1">Log<span class="n" id="ah-log-n"></span></button>
+</nav>
+<div id="ah-panel-main" role="tabpanel" aria-labelledby="ah-tab-main" tabindex="0">
+  <!-- The page's own content goes here. -->
+</div>
+<div id="ah-panel-log" class="ah-log" role="tabpanel" aria-labelledby="ah-tab-log" tabindex="0" hidden>
+  <h2>Log</h2>
+  <p class="lead">Every question asked on this page, what was answered and what changed, newest first, then the version history.</p>
+  <input type="search" id="ah-log-filter" placeholder="Filter the log" aria-label="Filter the log">
+  <h3>Questions and answers</h3>
+  <ol class="qa" id="ah-log-qa"></ol>
+  <h3>Versions</h3>
+  <div class="box"><table>
+    <thead><tr><th scope="col" tabindex="0">Version</th><th scope="col" tabindex="0">When</th><th scope="col" tabindex="0">What changed</th></tr></thead>
+    <tbody id="ah-log-versions"></tbody>
+  </table></div>
+</div>
+
+<script>
+/* Fill these when publishing, newest first. Text is shown as written, never as markup.
+   qa:       { when: "2025-01-15 09:00 UTC", who: "Reviewer", question: "their words, verbatim", answer: "what was answered", changed: "what changed on the page, with the version" }
+   versions: { version: "v1.2", when: "2025-01-15 09:30 UTC", changed: "what this version changed" } */
+var AHLOG = { main: "Page", qa: [], versions: [] };
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var el = function (tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  var tabs = [[$("ah-tab-main"), $("ah-panel-main")], [$("ah-tab-log"), $("ah-panel-log")]];
+  if (!tabs[0][0] || !tabs[1][0]) return;
+  tabs[0][0].textContent = AHLOG.main || "Page";
+  var qa = AHLOG.qa || [], versions = AHLOG.versions || [];
+  if (qa.length) $("ah-log-n").textContent = String(qa.length);
+  function show(i, focus) {
+    tabs.forEach(function (t, k) { var on = k === i; t[0].setAttribute("aria-selected", on ? "true" : "false"); t[0].tabIndex = on ? 0 : -1; t[1].hidden = !on; });
+    if (focus) tabs[i][0].focus();
+  }
+  tabs.forEach(function (t, k) {
+    t[0].addEventListener("click", function () { show(k, false); });
+    t[0].addEventListener("keydown", function (ev) {
+      if (ev.key === "ArrowRight" || ev.key === "ArrowLeft") { ev.preventDefault(); show(k === 0 ? 1 : 0, true); }
+      if (ev.key === "Home") { ev.preventDefault(); show(0, true); }
+      if (ev.key === "End") { ev.preventDefault(); show(1, true); }
+    });
+  });
+  var filter = $("ah-log-filter"), qaHost = $("ah-log-qa"), vHost = $("ah-log-versions"), sortCol = -1, dir = 1;
+  var vKeys = ["version", "when", "changed"];
+  function line(label, cls, text) { var d = el("div", cls); d.append(el("span", "lbl", label + " "), String(text)); return d; }
+  function draw() {
+    var f = filter.value.trim().toLowerCase();
+    var hit = function (o) { return !f || Object.keys(o).map(function (k) { return String(o[k] == null ? "" : o[k]); }).join(" ").toLowerCase().indexOf(f) >= 0; };
+    var qs = qa.filter(hit);
+    qaHost.replaceChildren.apply(qaHost, qs.map(function (x) {
+      var li = el("li");
+      li.append(el("div", "meta", [x.when, x.who].filter(Boolean).join(" · ")), el("div", "q", x.question == null ? "" : String(x.question)));
+      if (x.answer) li.append(line("Answer:", "a", x.answer));
+      if (x.changed) li.append(line("What changed:", "c", x.changed));
+      return li;
+    }));
+    if (!qs.length) qaHost.append(el("li", "none", qa.length ? "No entry matches the filter." : "No questions yet."));
+    var vs = versions.filter(hit);
+    if (sortCol >= 0) vs = vs.slice().sort(function (a, b) { return String(a[vKeys[sortCol]] || "").localeCompare(String(b[vKeys[sortCol]] || ""), undefined, { numeric: true }) * dir; });
+    vHost.replaceChildren.apply(vHost, vs.map(function (x) { var tr = el("tr"); vKeys.forEach(function (k) { tr.append(el("td", null, x[k] == null ? "" : String(x[k]))); }); return tr; }));
+    if (!vs.length) { var tr = el("tr"); var td = el("td", "none", versions.length ? "No version matches the filter." : "No versions recorded yet."); td.colSpan = 3; tr.append(td); vHost.append(tr); }
+  }
+  filter.addEventListener("input", draw);
+  Array.prototype.forEach.call(vHost.parentNode.querySelectorAll("thead th"), function (th, i) {
+    var go = function () { dir = sortCol === i ? -dir : 1; sortCol = i; Array.prototype.forEach.call(th.parentNode.children, function (x) { x.removeAttribute("aria-sort"); }); th.setAttribute("aria-sort", dir > 0 ? "ascending" : "descending"); draw(); };
+    th.addEventListener("click", go);
+    th.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(); } });
+  });
+  draw();
+  function fromHash() { if (location.hash === "#log") show(1, false); }
+  fromHash(); window.addEventListener("hashchange", fromHash);
+})();
+</script>
+<!-- ===== END Log tab scaffold ===== -->

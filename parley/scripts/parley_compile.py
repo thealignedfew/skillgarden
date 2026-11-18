@@ -7,7 +7,7 @@ manager session (one that answers for others) compiles its page from its own fra
 report's fragment, so the crew's questions land on one page.
 
   python parley_compile.py --own <MANAGER>_PARLEY.json --out <MANAGER>_PARLEY.html \
-      [--report <SEAT>_PARLEY.json ...] [--template <path>] [--refresh] [--warn-links-elsewhere]
+      [--report <SEAT>_PARLEY.json ...] [--template <path>] [--refresh] [--warn-links-elsewhere] [--stale-days N]
 
 --out is created from the template (assets/parley-template.html beside this script) if it does not
 exist, otherwise only its DATA object is replaced, so a page's own experiments survive. A lock file
@@ -41,8 +41,15 @@ Checks printed on every compile:
              first, missing its stamp, or empty.
   CODENAME MISSING  an open card with no codename and an id that is not of the form PROJECT_Topic.
   PASTE SHARED  one paste on two cards.
+  CARD STALE  an open card (not Completed, not Superseded) whose newest dated line (the newest update, the checked line,
+             or opened) is more than --stale-days days old (default 3; 0 switches the check off). A warning only: recheck
+             the card against the system of record, write a dated checked line, re-rate it, rewrite or close it.
+             scripts/parley_stale.py prints the same list on its own.
+  TOPIC LONG  a card's "topic" (the short name the page groups by) runs past 40 characters.
 
 Checks that refuse (nothing is written):
+  PASTE CONTROL  a paste box holding a control character (usually a lost backslash escape such as backslash-a, which would
+             put a bell byte on the clipboard). Exit code 3.
   OPENED MISSING  a card, open or closed, with no parsable "opened" (YYYY-MM-DD HH:MM, the time the author session added
              the card, never its latest edit). A card with "when" but no "opened" takes "when"; a placeholder minute (09:4x)
              reads as 09:40. Exit code 3.
@@ -52,6 +59,7 @@ Checks that refuse (nothing is written):
              decisions and changes hits to one warning.
 """
 import argparse
+import datetime
 import io
 import json
 import os
@@ -117,6 +125,8 @@ def main():
     ap.add_argument("--template", default=TEMPLATE)
     ap.add_argument("--refresh", action="store_true", help="rebuild --out from the template, keeping only DATA")
     ap.add_argument("--warn-links-elsewhere", action="store_true", help="only warn (do not refuse) on paths or document names outside open cards")
+    ap.add_argument("--stale-days", type=int, default=3,
+                    help="warn CARD STALE for an open card whose newest dated line is older than this many days; 0 switches it off")
     a = ap.parse_args()
     lock = a.out + ".lock"
     if os.path.exists(lock) and time.time() - os.path.getmtime(lock) < 600:
@@ -168,6 +178,56 @@ def main():
         for ids in pastes.values():
             if len(ids) > 1:
                 print("PASTE SHARED by %s: a paste belongs to one card; fix the fragments" % ", ".join(ids))
+        # A paste box must not hold a control character: a Python backslash-a written into a card would reach the clipboard as a bell byte.
+        bad = []
+        for f in [data] + reports:
+            for q in f.get("questions") or []:
+                p = q.get("paste")
+                if isinstance(p, str) and any(ord(ch) < 32 and ord(ch) not in (9, 10, 13) for ch in p):
+                    bad.append("%s:%s" % (f.get("seat"), q.get("id")))
+        if bad:
+            for tag in bad:
+                print("PASTE CONTROL %s: the paste box holds a control character (a lost backslash escape such as backslash-a or backslash-b); fix the text" % tag)
+            print("NOT COMPILED: %d paste box(es) with control characters; nothing was written" % len(bad))
+            return 3
+        # The daily recheck: an open card whose newest dated line is old is flagged (a warning only; the exit code does not change).
+        # A card's "topic" passes through as written; a long one is flagged.
+        day_rx = re.compile(r"(20\d\d)-(\d\d)-(\d\d)")
+        today = datetime.date.today()
+
+        def newest_day(q):
+            texts = [str(u.get("when") or "") for u in (q.get("updates") or []) if isinstance(u, dict)]
+            texts += [str(q.get("checked") or ""), str(q.get("opened") or "")]
+            days = []
+            for s in texts:
+                for y, m, d in day_rx.findall(s):
+                    try:
+                        day = datetime.date(int(y), int(m), int(d))
+                    except ValueError:
+                        continue
+                    if day <= today + datetime.timedelta(days=1):      # a date in the future is a plan, not a check
+                        days.append(day)
+            return max(days) if days else None
+        stale = 0
+        for f in [data] + reports:
+            for q in f.get("questions") or []:
+                tag = "%s:%s" % (f.get("seat"), q.get("id"))
+                tp = q.get("topic")
+                if tp is not None and not isinstance(tp, str):
+                    q["topic"] = tp = str(tp)
+                if tp and len(tp.strip()) > 40:
+                    print("TOPIC LONG %s: %d characters; a topic is a short name to group by (40 at most), for example a product or a project" % (tag, len(tp.strip())))
+                if a.stale_days <= 0:
+                    continue
+                if str(q.get("status") or q.get("stage") or "open").lower() in ("done", "completed", "superseded"):
+                    continue
+                nd = newest_day(q)
+                age = (today - nd).days if nd else None
+                if age is not None and age > a.stale_days:
+                    stale += 1
+                    print("CARD STALE %s %d days: no dated line since %s; recheck it against the system of record, write a dated 'checked' line, re-rate it, rewrite or close it" % (tag, age, nd.isoformat()))
+        if stale:
+            print("STALE %d open card(s) older than %d day(s); the daily recheck is due" % (stale, a.stale_days))
         # Check before surfacing; a ruling on many items puts the list on the card.
         many = re.compile(r"\b\d{2,}\s+(?:\w+\s+){0,2}(?:merges?|items?|rows?|records?|bills?|vendors?|contacts?|journals?|entries|lines?|invoices?|accounts?|files?|names?)\b", re.I)
         for f in [data] + reports:
@@ -231,14 +291,16 @@ def main():
                     if any(not isinstance(c, str) for c in it.get("columns") or []):
                         it["columns"] = [str(c) for c in it["columns"]]
                 elif many.search("%s %s" % (q.get("ask") or "", q.get("title") or "")):
-                    print("LIST MISSING %s: it asks about many items; put them on the card as 'items' (columns, rows), approve or strike per row" % tag)
+                    print("LIST MISSING %s: it asks about many items; put them on the card as 'items' (columns, rows), approve, hold or strike per row" % tag)
         # No file path or document name anywhere on a page: the card carries what the reader needs, in 'explain' blocks.
         path_rx = re.compile(r"(?<![A-Za-z0-9])[A-Za-z]:[\\/]|\\\\[A-Za-z0-9_.$-]+\\|(?<![\w/])[\w.-]+\.(?:md|docx?|xlsx?|pdf|txt)\b", re.I)
 
         def walk(x, where):
             if isinstance(x, dict):
                 for k, v in x.items():
-                    if k == "paste":                              # a command or baton to paste is not a document link
+                    if k == "paste":                              # a command or note to paste is not a document link
+                        continue
+                    if k in ("comments", "comment"):              # the reviewer's verbatim words may contain anything
                         continue
                     yield from walk(v, where + "." + str(k))
             elif isinstance(x, list):

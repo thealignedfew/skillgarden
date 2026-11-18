@@ -6,7 +6,8 @@ A skill here is a folder with a `SKILL.md` that an agent reads on demand, plus w
 
 | Folder | What it is |
 |---|---|
-| `parley` | One published page per agent session for its correspondence with the person running it: open questions as cards, answered by comment. |
+| `parley` | One published page per agent session for its correspondence with the person running it: open questions as cards, answered in a box on the card, by a click or by comment. |
+| `reprompt` | Timed loops in which a Claude Code session prompts itself again between your prompts: keep the prompt cache warm, or keep checking its own work while you are away. |
 | `ramgovern` | A Working Set Governor for Windows machines running many Claude Code sessions. |
 | `familycfo` | A household money ledger in one web page. |
 
