@@ -1,0 +1,18 @@
+{
+  "version": "example-2026-09-05",
+  "as_of": "2026-09-05",
+  "source": "Anthropic public model pricing table (platform.claude.com, pricing page), read on the date in as_of.",
+  "_comment": "These are public list prices in US dollars per million tokens, copied once. They go stale. Check them against the pricing page before you trust any dollar figure, then copy this file to the rates_file path in your config and edit the copy. A model missing from the table is left unpriced and the page says so.",
+  "cache_note": "Cache write for 1 hour is 2 times the base input price, cache write for 5 minutes is 1.25 times, cache read is 0.1 times; a few models state their own cache read rate, so every rate is listed per model.",
+  "usd_per_mtok": {
+    "claude-opus-5":     {"in": 5.0,  "write_1h": 10.0, "write_5m": 6.25,  "read": 0.5,  "out": 25.0},
+    "claude-opus-4-8":   {"in": 5.0,  "write_1h": 10.0, "write_5m": 6.25,  "read": 0.5,  "out": 25.0},
+    "claude-opus-4-7":   {"in": 5.0,  "write_1h": 10.0, "write_5m": 6.25,  "read": 0.5,  "out": 25.0},
+    "claude-opus-4-6":   {"in": 5.0,  "write_1h": 10.0, "write_5m": 6.25,  "read": 0.5,  "out": 25.0},
+    "claude-fable-5":    {"in": 10.0, "write_1h": 20.0, "write_5m": 12.5,  "read": 1.0,  "out": 50.0},
+    "claude-fable-5-1":  {"in": 10.0, "write_1h": 20.0, "write_5m": 12.5,  "read": 0.25, "out": 50.0},
+    "claude-sonnet-5":   {"in": 2.0,  "write_1h": 4.0,  "write_5m": 2.5,   "read": 0.2,  "out": 10.0},
+    "claude-sonnet-4-6": {"in": 3.0,  "write_1h": 6.0,  "write_5m": 3.75,  "read": 0.3,  "out": 15.0},
+    "claude-haiku-4-5":  {"in": 1.0,  "write_1h": 2.0,  "write_5m": 1.25,  "read": 0.1,  "out": 5.0}
+  }
+}

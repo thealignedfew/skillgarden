@@ -1,0 +1,17 @@
+{
+  "_comment": "Synthetic example of what the usage endpoint returns, shaped from the fields the tool reads. Not real data. The five_hour and seven_day windows carry utilization (a percent) and resets_at; seven_day_<name> keys carry per-model weekly windows; limits[] is the newer array; extra_usage appears only on accounts that have the feature, with credit amounts in minor currency units.",
+  "acct-a": {
+    "five_hour": {"utilization": 75, "resets_at": "__RESET_5H__"},
+    "seven_day": {"utilization": 40, "resets_at": "__RESET_7D__"},
+    "seven_day_opus": {"utilization": 10, "resets_at": "__RESET_7D__"},
+    "limits": [
+      {"kind": "session", "severity": "critical", "is_active": true, "utilization": 75, "resets_at": "__RESET_5H__"},
+      {"kind": "weekly_scoped", "label": "Example Model", "severity": "normal", "is_active": false, "utilization": 12, "resets_at": "__RESET_7D__"}
+    ],
+    "extra_usage": {"is_enabled": true, "used_credits": 1250, "monthly_limit": 50000, "utilization": 2.5, "currency": "USD", "decimal_places": 2, "spend_limit_reached": false}
+  },
+  "acct-b": {
+    "five_hour": {"utilization": 5, "resets_at": "__RESET_5H__"},
+    "seven_day": {"utilization": 20, "resets_at": "__RESET_7D__"}
+  }
+}

@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Usage Mirror</title>
+<style>
+:root {
+  --bg: #F5F6F8; --surface: #FFFFFF; --ink: #161A21; --ink-2: #4A5261; --ink-3: #6B7483;
+  --line: #DDE1E7; --line-2: #ECEEF2; --seq: #1F6E8C; --warn: #A2510C; --warn-bg: #FBEBDD;
+  --hover: rgba(22, 26, 33, 0.05); --track: #E3E6EB;
+  --f-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-mono: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111317; --surface: #191C22; --ink: #E7E9ED; --ink-2: #A8AFBB; --ink-3: #8D95A3;
+    --line: #2B3039; --line-2: #22262D; --seq: #6DB4D3; --warn: #E8995A; --warn-bg: #3A2A1B;
+    --hover: rgba(231, 233, 237, 0.06); --track: #2B3039; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111317; --surface: #191C22; --ink: #E7E9ED; --ink-2: #A8AFBB; --ink-3: #8D95A3;
+  --line: #2B3039; --line-2: #22262D; --seq: #6DB4D3; --warn: #E8995A; --warn-bg: #3A2A1B;
+  --hover: rgba(231, 233, 237, 0.06); --track: #2B3039; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--f-sans); }
+main { max-width: 1120px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+h2 { font-size: 15px; margin: 0; }
+.muted { color: var(--ink-3); }
+.small { font-size: 12px; }
+.mono { font-family: var(--f-mono); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin: 14px 0; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 14px; margin-bottom: 10px; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.bar label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; background: var(--surface); cursor: pointer; }
+.chip[aria-pressed="false"] { opacity: 0.5; }
+.sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+select, input[type=search], button { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; }
+button { cursor: pointer; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.tile .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tile .k { color: var(--ink-3); font-size: 12px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.card { border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: var(--surface); }
+.card h3 { margin: 0 0 6px; font-size: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.meter { display: grid; grid-template-columns: 84px 1fr 44px; gap: 8px; align-items: center; margin: 5px 0; }
+.tr { background: var(--track); height: 10px; border-radius: 5px; overflow: hidden; display: block; }
+.tr i { display: block; height: 100%; }
+.pv { text-align: right; font-variant-numeric: tabular-nums; }
+.pv.hi { color: var(--warn); font-weight: 600; }
+.rs { grid-column: 2 / 4; color: var(--ink-3); font-size: 12px; margin-top: -3px; }
+.mproj { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; margin: 2px 0 6px; color: var(--ink-2); }
+.mst { border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; }
+.mst.warn { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); display: inline-flex; gap: 4px; align-items: center; font-weight: 600; }
+.mst svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+details summary { cursor: pointer; color: var(--ink-2); font-size: 12px; }
+details p { margin: 4px 0; font-size: 12px; color: var(--ink-2); }
+.notice { border: 1px solid var(--warn); background: var(--warn-bg); color: var(--ink); border-radius: 6px; padding: 6px 10px; margin: 8px 0; font-size: 13px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+th { font-weight: 600; color: var(--ink-2); font-size: 12px; white-space: nowrap; }
+th[data-k] { cursor: pointer; }
+td.n, th.n { text-align: right; }
+.scroll { overflow-x: auto; }
+svg.chart { width: 100%; height: auto; display: block; }
+svg.chart text { fill: var(--ink-3); font-size: 10px; font-family: var(--f-sans); }
+svg.chart .grid { stroke: var(--line); stroke-width: 1; }
+ul.ins { margin: 6px 0 0; padding-left: 18px; }
+ul.ins li { margin: 4px 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-size: 12px; color: var(--ink-2); }
+@media (max-width: 560px) { main { padding: 12px; } .meter { grid-template-columns: 70px 1fr 40px; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Usage Mirror</h1>
+    <div class="muted small" id="sub"></div>
+  </header>
+
+  <div class="panel">
+    <div class="bar">
+      <span id="acctChips" class="bar"></span>
+      <label>Window <select id="win"><option value="7">7 days</option><option value="14">14 days</option><option value="30">30 days</option><option value="0" selected>All collected</option></select></label>
+      <label title="Turns you typed"><input type="checkbox" id="tcTyped" checked> typed</label>
+      <label title="Timed self-prompts: loops, ticks and scripted runs"><input type="checkbox" id="tcSched" checked> timed self-prompts</label>
+      <label title="Messages from other sessions and background task results"><input type="checkbox" id="tcOthers" checked> from others</label>
+      <label>Theme <select id="theme"><option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+    </div>
+    <div id="notices"></div>
+  </div>
+
+  <section class="tiles" id="tiles" aria-label="Totals"></section>
+
+  <section class="panel" id="metersPanel">
+    <div class="panel-head"><h2>Plan meters</h2><span class="muted small" id="meterNote"></span></div>
+    <div class="cards" id="meters"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>History</h2>
+      <label class="small">Show <select id="metric"><option value="usd">API-equivalent cost</option><option value="fresh">Fresh tokens</option><option value="calls">Responses</option></select></label>
+    </div>
+    <div id="daily"></div>
+    <div class="panel-head" style="margin-top:14px"><h2>Last 48 hours</h2><span class="muted small">by hour, cost or responses</span></div>
+    <div id="hourly"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Outliers review</h2><span class="muted small">a short list of what stood out in a recent window</span></div>
+    <div id="ins"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Models</h2></div>
+    <div class="scroll" id="models"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Sessions</h2><input type="search" id="q" placeholder="Filter by title, account or folder" aria-label="Filter sessions"><span class="muted small" id="sessNote"></span></div>
+    <div class="scroll" id="sessions"></div>
+  </section>
+
+  <section class="panel small muted" id="about"></section>
+</main>
+<script>
+const U = /*__USAGE_DATA__*/null;
+(function () {
+'use strict';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+if (!U || !U.rows) { $('sub').textContent = 'No data embedded. Run scripts/refresh.py.'; return; }
+
+const ix = (cols) => { const o = {}; cols.forEach((c, i) => { o[c] = i; }); return o; };
+const R = ix(U.row_cols), T = ix(U.turn_row_cols), H = ix(U.hour_cols), S = ix(U.session_cols);
+const TZ = U.timezone_effective || 'UTC';
+const fmtN = (n) => (n >= 1e9 ? (n / 1e9).toFixed(2) + 'B' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K' : String(Math.round(n)));
+const fmtUsd = (n) => '$' + (n >= 100 ? Math.round(n).toLocaleString('en-US') : n.toFixed(2));
+const fmtH = (h) => (h >= 48 ? (h / 24).toFixed(1) + ' days' : h >= 10 ? Math.round(h) + ' h' : h.toFixed(1) + ' h');
+const when = (iso) => {
+  const d = new Date(iso);
+  if (isNaN(d)) return String(iso || '');
+  try { return d.toLocaleString('en-GB', { timeZone: TZ, month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }); }
+  catch (e) { return d.toISOString().slice(0, 16).replace('T', ' ') + ' UTC'; }
+};
+const ago = (iso) => {
+  const m = (Date.now() - Date.parse(iso)) / 60000;
+  if (!isFinite(m)) return '';
+  return m < 1.5 ? 'just now' : m < 90 ? Math.round(m) + ' min ago' : m < 2880 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' days ago';
+};
+const acctColor = (i) => (U.accounts[i] && U.accounts[i].color) || '#888';
+const acctIndex = {}; U.accounts.forEach((a, i) => { acctIndex[a.label] = i; });
+
+const state = { accts: new Set(U.accounts.map((_, i) => i)), win: 0, tc: { 0: true, 1: true, 2: true }, metric: 'usd', sort: { k: 'usd', dir: -1 }, q: '', all: false };
+
+function dayCut() {
+  if (!state.win) return '';
+  const [y, m, d] = U.generated_local.slice(0, 10).split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d - (state.win - 1)));
+  return t.toISOString().slice(0, 10);
+}
+function rowOk(r, cut) {
+  if (cut && r[R.day] < cut) return false;
+  if (!state.accts.has(r[R.account])) return false;
+  const tc = r[R.turn_class];
+  return tc === 3 ? (state.tc[0] && state.tc[1] && state.tc[2]) : !!state.tc[tc];
+}
+const val = (r) => (state.metric === 'usd' ? r[R.usd] : state.metric === 'fresh' ? r[R.input] + r[R.cache_write] : r[R.calls]);
+const fmtMetric = (v) => (state.metric === 'usd' ? fmtUsd(v) : fmtN(v));
+
+function renderTiles(rows, cut) {
+  let calls = 0, fresh = 0, cr = 0, out = 0, usd = 0; const sess = new Set();
+  rows.forEach((r) => { calls += r[R.calls]; fresh += r[R.input] + r[R.cache_write]; cr += r[R.cache_read]; out += r[R.output]; usd += r[R.usd]; sess.add(r[R.session]); });
+  let typed = 0, sched = 0, others = 0;
+  U.turn_rows.forEach((t) => { if ((!cut || t[T.day] >= cut) && state.accts.has(t[T.account])) { typed += t[T.typed]; sched += t[T.scheduled]; others += t[T.peer] + t[T.task]; } });
+  const tile = (v, k, tip) => '<div class="tile" title="' + esc(tip) + '"><div class="v">' + esc(v) + '</div><div class="k">' + esc(k) + '</div></div>';
+  const dollars = U.rates_problem ? 'n/a' : fmtUsd(usd);
+  $('tiles').innerHTML =
+    tile(dollars, 'API-equivalent cost', 'Every response priced at public list price. A benchmark for comparing causes, never what you were charged.') +
+    tile(fmtN(fresh), 'Fresh input tokens', 'New input plus cache writes. Cache reads are counted separately.') +
+    tile(fmtN(cr), 'Cache read tokens', 'Context re-read from the prompt cache.') +
+    tile(fmtN(out), 'Output tokens', 'Tokens the models wrote.') +
+    tile(fmtN(calls), 'Responses', 'Model responses, subagents included.') +
+    tile(typed + ' / ' + sched + ' / ' + others, 'Turns: typed / self / others', 'Typed prompts, timed self-prompts, and messages from other sessions or background tasks.') +
+    tile(String(sess.size), 'Sessions active', 'Sessions with at least one response in the window.');
+}
+
+const ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 15 14H1z"></path><path d="M8 6.2v3.6"></path><path d="M8 11.9v.1"></path></svg>';
+function meterRow(name, w, col, tip) {
+  if (!w || w.pct == null) return '';
+  const p = Math.max(0, Math.min(100, +w.pct));
+  return '<div class="meter" title="' + esc(tip || name) + '"><span>' + esc(name) + '</span><span class="tr"><i style="width:' + p + '%;background:' + esc(col) + '"></i></span><span class="pv' + (p >= 80 ? ' hi' : '') + '">' + Math.round(p) + '%</span>' +
+    (w.resets_at ? '<span class="rs">resets ' + esc(when(w.resets_at)) + '</span>' : '') + '</div>';
+}
+function fcHtml(name, f) {
+  if (!f) return '';
+  const rising = (f.rates || []).filter((r) => r.rate_per_hour > 0);
+  let h = '<div class="mproj" data-window="' + esc(name) + '" data-status="' + esc(f.status) + '">';
+  if (f.status === 'runs_out_before_reset') h += '<span class="mst warn" role="status">' + ICON + 'Runs out before reset</span>';
+  else if (f.status === 'resets_first') h += '<span class="mst">Resets first</span>';
+  else if (f.status === 'stale') h += '<span class="mst">Reading is older than the window</span>';
+  else h += '<span class="mst">No projection</span>';
+  if (!rising.length) h += '<span>' + esc(f.why || '') + '</span>';
+  rising.forEach((r) => { h += '<span>' + fmtH(r.to_full_hours) + ' to 100% at ' + r.rate_per_hour.toFixed(1) + ' points an hour (' + esc(r.label) + ')</span>'; });
+  h += '</div>';
+  let w = '<details><summary>How the ' + esc(name) + ' forecast is worked out</summary>';
+  if (!(f.rates || []).length) w += '<p>A forecast needs two readings of this window since it last reset; there ' + (f.n === 1 ? 'is one' : 'are ' + f.n) + '.</p>';
+  (f.rates || []).forEach((r) => {
+    w += '<p>Over ' + esc(r.label) + ': (' + r.to_pct + '% - ' + r.from_pct + '%) / ' + r.hours.toFixed(2) + ' h (' + esc(when(r.from_at)) + ' to ' + esc(when(r.to_at)) + ') = ' + r.rate_per_hour.toFixed(1) + ' points an hour.';
+    if (r.rate_per_hour > 0) w += ' Left: 100% - ' + r.to_pct + '% = ' + r.left.toFixed(0) + ' points. Time to 100% = ' + r.left.toFixed(0) + ' / ' + r.rate_per_hour.toFixed(1) + ' = ' + r.to_full_hours.toFixed(1) + ' h, about ' + esc(when(r.full_at)) + '.' + (r.before_reset === true ? ' The window resets ' + esc(when(f.reset_at)) + ', later, so at this rate it runs out first.' : r.before_reset === false ? ' The window resets ' + esc(when(f.reset_at)) + ', sooner.' : ' The reset time is not known.');
+    else w += ' Not rising, so no time to 100%.';
+    w += '</p>';
+  });
+  return h + w + '<p>The rate is a straight line between readings. It assumes the rate holds and says nothing about use that has not happened yet.</p></details>';
+}
+function sparkline(hist) {
+  const pts = hist.filter((r) => r[2] != null || r[1] != null);
+  if (pts.length < 2) return '';
+  const t0 = Date.parse(pts[0][0]), t1 = Date.parse(pts[pts.length - 1][0]);
+  if (!(t1 > t0)) return '';
+  const line = (k, col) => {
+    const d = pts.filter((r) => r[k] != null).map((r, i) => (i ? 'L' : 'M') + (4 + (Date.parse(r[0]) - t0) / (t1 - t0) * 292).toFixed(1) + ' ' + (4 + (100 - r[k]) / 100 * 40).toFixed(1)).join('');
+    return '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="1.5"></path>';
+  };
+  return '<svg class="chart" viewBox="0 0 300 48" role="img" aria-label="Meter readings over the stored history: 7-day in blue, 5-hour in orange"><line class="grid" x1="4" x2="296" y1="4" y2="4"></line><line class="grid" x1="4" x2="296" y1="44" y2="44"></line>' + line(2, 'var(--seq)') + line(1, 'var(--warn)') + '</svg>' +
+    '<div class="muted small">Stored readings, 7-day (blue) and 5-hour (orange), top line is 100%.</div>';
+}
+function renderMeters() {
+  const M = U.meters || {};
+  let any = false;
+  const cards = U.accounts.map((a, i) => {
+    if (!state.accts.has(i)) return '';
+    const m = M[a.label]; if (!m) return '';
+    const rd = m.reading;
+    any = true;
+    let h = '<div class="card" data-account="' + esc(a.label) + '"><h3><span class="sw" style="background:' + esc(a.color) + '"></span>' + esc(a.label);
+    if (rd) h += '<span class="mst small" title="' + esc(rd.message || '') + '">' + esc(rd.source) + (rd.fetched_utc ? ', ' + esc(ago(rd.fetched_utc)) : '') + '</span>';
+    h += '</h3>';
+    if (!rd || (!rd.five_hour && !rd.seven_day)) {
+      h += '<p class="muted small">' + esc((rd && rd.message) || 'No meter reading yet. Run scripts/refresh.py with live meters on.') + '</p>';
+    } else {
+      if (rd.message) h += '<p class="muted small">' + esc(rd.message) + '</p>';
+      h += meterRow('5-hour', rd.five_hour, a.color, 'Share of the 5-hour window used, across every surface') + fcHtml('5-hour', m.forecast && m.forecast.five_hour);
+      h += meterRow('7-day', rd.seven_day, a.color, 'Share of the weekly limit used, across every surface') + fcHtml('7-day', m.forecast && m.forecast.seven_day);
+      (rd.scoped || []).forEach((s) => { h += meterRow('7-day ' + s.label, s, a.color, 'Weekly limit scoped to ' + s.label); });
+      (rd.limits || []).filter((l) => l.pct != null && /scoped/i.test(l.kind)).forEach((l) => { h += meterRow(l.label || l.kind, l, a.color, 'Per-limit entry from the limits array'); });
+      const sev = (rd.limits || []).filter((l) => l.severity && l.severity !== 'normal');
+      if (sev.length) h += '<div class="small">' + sev.map((l) => '<span class="mst warn">' + ICON + esc((l.label || l.kind || 'limit') + ': ' + l.severity) + '</span>').join(' ') + '</div>';
+      const ex = rd.extra_usage;
+      if (ex) h += '<p class="small">Extra usage: ' + (ex.enabled ? 'on' : 'off') + (ex.used != null && ex.monthly_limit != null ? ', ' + ex.used.toFixed(2) + ' of ' + ex.monthly_limit.toFixed(2) + ' ' + esc(ex.currency || '') + ' used' : '') + (ex.pct != null ? ' (' + (+ex.pct).toFixed(1) + '%)' : '') + (ex.limit_reached ? ', limit reached' : '') + '</p>';
+      else h += '<p class="muted small">Extra usage: not reported for this account. It needs an account that has the feature and a sign-in the endpoint accepts.</p>';
+    }
+    h += sparkline(m.history || []);
+    const ms = m.measured || {};
+    ['five_hour', 'seven_day'].forEach((k) => {
+      if (ms[k]) h += '<p class="muted small">This machine measured in the ' + (k === 'five_hour' ? '5-hour' : '7-day') + ' window: ' + fmtN(ms[k].fresh) + ' fresh, ' + fmtN(ms[k].cache_read) + ' cache read, ' + fmtN(ms[k].output) + ' output, ' + (U.rates_problem ? 'dollars off' : fmtUsd(ms[k].usd) + ' API-equivalent') + '.</p>';
+    });
+    return h + '</div>';
+  }).join('');
+  $('meters').innerHTML = cards;
+  $('meterNote').textContent = any ? 'A meter covers every surface on the account (Claude Code, desktop, web, other machines). This page can only itemise what ran on this machine.' : 'No meter data.';
+}
+
+function barChart(el, labels, series, fmt, perLabel) {
+  const W = 1000, Ht = 170, L = 44, B = 22, T = 8, n = labels.length;
+  if (!n) { $(el).innerHTML = '<p class="muted small">Nothing in this window.</p>'; return; }
+  const tot = labels.map((_, i) => series.reduce((s, x) => s + x.values[i], 0));
+  const max = Math.max.apply(null, tot.concat([1e-9]));
+  const bw = Math.max(2, (W - L) / n - 2);
+  let g = '';
+  [0, 0.5, 1].forEach((f) => { const y = T + (Ht - T - B) * (1 - f); g += '<line class="grid" x1="' + L + '" x2="' + W + '" y1="' + y + '" y2="' + y + '"></line><text x="' + (L - 4) + '" y="' + (y + 3) + '" text-anchor="end">' + esc(fmt(max * f)) + '</text>'; });
+  labels.forEach((lab, i) => {
+    let y = Ht - B;
+    const x = L + i * ((W - L) / n) + 1;
+    series.forEach((s) => {
+      const hgt = s.values[i] / max * (Ht - T - B);
+      if (hgt > 0) { y -= hgt; g += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + hgt.toFixed(1) + '" fill="' + esc(s.color) + '"><title>' + esc(lab + ' ' + s.name + ': ' + fmt(s.values[i])) + '</title></rect>'; }
+    });
+    if (i % Math.ceil(n / perLabel) === 0) g += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (Ht - 6) + '" text-anchor="middle">' + esc(lab) + '</text>';
+  });
+  $(el).innerHTML = '<svg class="chart" viewBox="0 0 ' + W + ' ' + Ht + '" role="img" aria-label="Bar chart">' + g + '</svg>' +
+    '<div class="legend">' + series.map((s) => '<span><span class="sw" style="background:' + esc(s.color) + '"></span> ' + esc(s.name) + '</span>').join('') + '</div>';
+}
+function renderCharts(rows) {
+  const days = []; const byDay = {};
+  rows.forEach((r) => { const d = r[R.day]; if (!(d in byDay)) { byDay[d] = {}; days.push(d); } byDay[d][r[R.account]] = (byDay[d][r[R.account]] || 0) + val(r); });
+  days.sort();
+  const accts = U.accounts.map((a, i) => i).filter((i) => state.accts.has(i));
+  barChart('daily', days.map((d) => d.slice(5)), accts.map((i) => ({ name: U.accounts[i].label, color: acctColor(i), values: days.map((d) => byDay[d][i] || 0) })), fmtMetric, 16);
+  // last 48 hours
+  const end = new Date(U.generated_local.replace(' ', 'T') + ':00Z');
+  const slots = []; const idxOf = {};
+  for (let k = 47; k >= 0; k--) { const t = new Date(end.getTime() - k * 3600000); const key = t.toISOString().slice(0, 13); idxOf[key] = slots.length; slots.push(t.toISOString().slice(11, 13) + 'h'); }
+  const hv = {}; accts.forEach((i) => { hv[i] = slots.map(() => 0); });
+  U.hours.forEach((h) => {
+    if (!state.accts.has(h[H.account])) return;
+    const tc = h[H.turn_class]; if (!(tc === 3 ? (state.tc[0] && state.tc[1] && state.tc[2]) : state.tc[tc])) return;
+    const key = h[H.day] + 'T' + String(h[H.hour]).padStart(2, '0');
+    if (key in idxOf) hv[h[H.account]][idxOf[key]] += state.metric === 'usd' ? h[H.usd] : h[H.calls];
+  });
+  const hfmt = state.metric === 'usd' ? fmtUsd : fmtN;
+  barChart('hourly', slots, accts.map((i) => ({ name: U.accounts[i].label, color: acctColor(i), values: hv[i] })), hfmt, 12);
+}
+
+function renderInsights() {
+  const L = Array.isArray(U.insights) ? U.insights.filter((x) => x && typeof x === 'object') : [];
+  if (!L.length) { $('ins').innerHTML = '<p class="muted small">No review yet. Run scripts/outliers.py.</p>'; return; }
+  const runs = L.slice().sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+  $('ins').innerHTML = runs.map((r, i) => {
+    const it = Array.isArray(r.items) ? r.items : [];
+    return '<details' + (i === 0 ? ' open' : '') + '><summary>' + esc(r.at || 'Undated run') + ' <span class="muted">window ' + esc(r.window_from || '?') + ' to ' + esc(r.window_to || '?') + ', ' + it.length + (it.length === 1 ? ' item' : ' items') + '</span></summary><ul class="ins">' +
+      it.map((x) => '<li><b>' + esc(x && x.title) + '</b>' + (x && x.detail ? ' <span class="muted">' + esc(x.detail) + '</span>' : '') + '</li>').join('') + '</ul></details>';
+  }).join('');
+}
+
+function table(cols, rows, extra) {
+  return '<table><thead><tr>' + cols.map((c) => '<th class="' + (c.n ? 'n' : '') + '"' + (c.k ? ' data-k="' + c.k + '" title="Sort"' : '') + '>' + esc(c.h) + (extra && extra.sort === c.k ? (state.sort.dir < 0 ? ' v' : ' ^') : '') + '</th>').join('') + '</tr></thead><tbody>' + rows.join('') + '</tbody></table>';
+}
+function renderModels(rows) {
+  const by = {};
+  rows.forEach((r) => { const m = by[r[R.model]] || (by[r[R.model]] = [0, 0, 0, 0, 0]); m[0] += r[R.calls]; m[1] += r[R.input] + r[R.cache_write]; m[2] += r[R.cache_read]; m[3] += r[R.output]; m[4] += r[R.usd]; });
+  const tot = Object.values(by).reduce((s, v) => s + v[4], 0) || 1;
+  const list = Object.keys(by).sort((a, b) => by[b][4] - by[a][4]);
+  $('models').innerHTML = table([{ h: 'Model' }, { h: 'Responses', n: 1 }, { h: 'Fresh', n: 1 }, { h: 'Cache read', n: 1 }, { h: 'Output', n: 1 }, { h: 'API-equivalent', n: 1 }, { h: 'Share', n: 1 }],
+    list.map((k) => { const v = by[k]; const un = U.unpriced_models && U.unpriced_models[U.models[k]]; return '<tr><td class="mono">' + esc(U.models[k]) + (un ? ' <span class="mst">unpriced</span>' : '') + '</td><td class="n">' + fmtN(v[0]) + '</td><td class="n">' + fmtN(v[1]) + '</td><td class="n">' + fmtN(v[2]) + '</td><td class="n">' + fmtN(v[3]) + '</td><td class="n">' + (U.rates_problem ? 'n/a' : fmtUsd(v[4])) + '</td><td class="n">' + (v[4] / tot * 100).toFixed(0) + '%</td></tr>'; }));
+}
+function renderSessions(rows, cut) {
+  const by = {};
+  rows.forEach((r) => { const m = by[r[R.session]] || (by[r[R.session]] = { calls: 0, fresh: 0, cr: 0, out: 0, usd: 0, typed: 0, sched: 0 }); m.calls += r[R.calls]; m.fresh += r[R.input] + r[R.cache_write]; m.cr += r[R.cache_read]; m.out += r[R.output]; m.usd += r[R.usd]; });
+  U.turn_rows.forEach((t) => { const m = by[t[T.session]]; if (m && (!cut || t[T.day] >= cut) && state.accts.has(t[T.account])) { m.typed += t[T.typed]; m.sched += t[T.scheduled]; } });
+  let list = Object.keys(by).map((k) => { const s = U.sessions[k]; return Object.assign({ i: +k, title: s[S.title] || s[S.id].slice(0, 8), account: s[S.account], project: s[S.project] >= 0 ? U.projects[s[S.project]] : '', last: s[S.last] }, by[k]); });
+  const q = state.q.trim().toLowerCase();
+  if (q) list = list.filter((s) => (s.title + ' ' + s.account + ' ' + s.project).toLowerCase().indexOf(q) >= 0);
+  const k = state.sort.k, d = state.sort.dir;
+  list.sort((a, b) => (typeof a[k] === 'string' ? a[k].localeCompare(b[k]) * d : (a[k] - b[k]) * d));
+  const shown = state.all ? list : list.slice(0, 100);
+  $('sessNote').textContent = list.length + ' sessions' + (list.length > shown.length ? ', showing ' + shown.length : '');
+  $('sessions').innerHTML = table([{ h: 'Session', k: 'title' }, { h: 'Account', k: 'account' }, { h: 'Folder', k: 'project' }, { h: 'Last response', k: 'last' }, { h: 'Responses', k: 'calls', n: 1 }, { h: 'Fresh', k: 'fresh', n: 1 }, { h: 'Cache read', k: 'cr', n: 1 }, { h: 'Output', k: 'out', n: 1 }, { h: 'API-equivalent', k: 'usd', n: 1 }, { h: 'Typed', k: 'typed', n: 1 }, { h: 'Self', k: 'sched', n: 1 }],
+    shown.map((s) => '<tr><td>' + esc(s.title) + '</td><td>' + esc(s.account) + '</td><td class="mono">' + esc(s.project) + '</td><td class="mono">' + esc(s.last) + '</td><td class="n">' + fmtN(s.calls) + '</td><td class="n">' + fmtN(s.fresh) + '</td><td class="n">' + fmtN(s.cr) + '</td><td class="n">' + fmtN(s.out) + '</td><td class="n">' + (U.rates_problem ? 'n/a' : fmtUsd(s.usd)) + '</td><td class="n">' + s.typed + '</td><td class="n">' + s.sched + '</td></tr>'), { sort: k }) +
+    (list.length > shown.length ? '<p><button id="showAll" type="button">Show all ' + list.length + '</button></p>' : '');
+  $('sessions').querySelectorAll('th[data-k]').forEach((h) => h.addEventListener('click', () => {
+    const kk = h.getAttribute('data-k');
+    const text = kk === 'title' || kk === 'account' || kk === 'project' || kk === 'last';
+    state.sort = { k: kk, dir: state.sort.k === kk ? -state.sort.dir : (text ? 1 : -1) };
+    render();
+  }));
+  const b = $('showAll'); if (b) b.addEventListener('click', () => { state.all = true; render(); });
+}
+
+function renderNotices() {
+  const n = [];
+  if (U.timezone_warning) n.push(U.timezone_warning);
+  if (U.rates_problem) n.push('Dollar figures are off: ' + U.rates_problem + '. Tokens are still shown.');
+  const un = Object.keys(U.unpriced_models || {});
+  if (un.length && !U.rates_problem) n.push(un.length + ' model(s) are not in the rates file and are left out of the dollar figures: ' + un.join(', ') + '.');
+  $('notices').innerHTML = n.map((t) => '<div class="notice" role="status">' + esc(t) + '</div>').join('');
+}
+function renderAbout() {
+  $('about').innerHTML = 'API-equivalent cost prices each response at public list price from the rates file (' + esc(U.rates_version || 'none loaded') + '). It is a benchmark for comparing causes, never spend, and list prices go stale. ' +
+    'Days and hours are in ' + esc(TZ) + '. Counts come from local Claude Code transcripts only; chat on the web, other machines and other tools are not in them. Plan meters come from an undocumented endpoint and may change. ' +
+    'Generated ' + esc(U.generated_local) + ', transcripts last read ' + esc(U.collected_local || 'unknown') + ', usage-mirror ' + esc(U.tool_version) + '.';
+}
+
+function render() {
+  const cut = dayCut();
+  const rows = U.rows.filter((r) => rowOk(r, cut));
+  renderTiles(rows, cut); renderMeters(); renderCharts(rows); renderModels(rows); renderSessions(rows, cut);
+}
+function init() {
+  $('sub').textContent = 'Generated ' + U.generated_local + ' ' + TZ + ', ' + U.sessions.length + ' sessions across ' + U.accounts.length + (U.accounts.length === 1 ? ' account' : ' accounts');
+  $('acctChips').innerHTML = U.accounts.map((a, i) => '<button type="button" class="chip" data-i="' + i + '" aria-pressed="true"><span class="sw" style="background:' + esc(a.color) + '"></span>' + esc(a.label) + '</button>').join('');
+  $('acctChips').querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => {
+    const i = +c.getAttribute('data-i');
+    if (state.accts.has(i)) state.accts.delete(i); else state.accts.add(i);
+    c.setAttribute('aria-pressed', state.accts.has(i) ? 'true' : 'false'); render();
+  }));
+  $('win').addEventListener('change', (e) => { state.win = +e.target.value; render(); });
+  $('metric').addEventListener('change', (e) => { state.metric = e.target.value; render(); });
+  [['tcTyped', 0], ['tcSched', 1], ['tcOthers', 2]].forEach(([id, k]) => $(id).addEventListener('change', (e) => { state.tc[k] = !!e.target.checked; render(); }));
+  $('q').addEventListener('input', (e) => { state.q = e.target.value; render(); });
+  $('theme').addEventListener('change', (e) => {
+    const v = e.target.value; if (v === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', v);
+    try { localStorage.setItem('usage-mirror-theme', v); } catch (x) { /* storage may be blocked */ }
+  });
+  try { const v = localStorage.getItem('usage-mirror-theme'); if (v && v !== 'auto') { document.documentElement.setAttribute('data-theme', v); $('theme').value = v; } } catch (x) { /* ignore */ }
+  renderNotices(); renderInsights(); renderAbout(); render();
+}
+init();
+})();
+</script>
+</body>
+</html>
