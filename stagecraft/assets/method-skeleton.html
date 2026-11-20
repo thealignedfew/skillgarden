@@ -1,0 +1,62 @@
+<!-- Stagecraft 0.3.2: the Method tab skeleton.
+     1. Add { id: "method", label: "Method" } to PB_CONFIG.tabs (put it last before the Log tab, which Stagecraft adds itself).
+     2. Copy the seven sections below into the page. Each carries data-pb-tab="method" and one fixed id (method-purpose, method-derived,
+        method-sources, method-assumed, method-limits, method-open, method-rebuild); keep the ids and the headings.
+     3. Fill every section with plain words in this file. The words must be in the page source, not built by script: an agent that
+        only reads the source, with no tools and no access to the data, has to get all of it.
+     4. A section that does not apply says "None". A section left out, or left empty, counts as a missing Method tab: the publish check
+        reminds (method.tab recommended) or refuses (required), and the page's self-test reports it.
+     Write for a reader who knows nothing about this page, its sources or its author: say what a thing is the first time it appears, name
+     the system and the field a figure came from, and give a date or a version wherever one matters. Negative numbers in parentheses. -->
+
+<section id="method-purpose" data-pb-tab="method">
+  <h2>What this page is for and who it is for</h2>
+  <!-- Two to four sentences: the question this page answers, who reads it and what they decide with it, how often it is rebuilt. -->
+</section>
+
+<section id="method-derived" data-pb-tab="method">
+  <h2>How each figure was derived</h2>
+  <!-- One row per figure a reader could ask about. The rule goes in words, not code: what is added, divided or compared, over what period, and what is left out. -->
+  <table data-pb-key="method-derived">
+    <thead><tr><th>Figure</th><th>Where it appears</th><th>The rule, in words</th><th>Source</th></tr></thead>
+    <tbody>
+    </tbody>
+  </table>
+</section>
+
+<section id="method-sources" data-pb-tab="method">
+  <h2>Sources</h2>
+  <!-- One row per source: its name as the page shows it, what it is, how it was reached (the route and the account, never a credential), the date its data runs through, who owns it. -->
+  <table data-pb-key="method-sources">
+    <thead><tr><th>Source</th><th>What it is</th><th>How it was reached</th><th>Data through</th><th>Owner</th></tr></thead>
+    <tbody>
+    </tbody>
+  </table>
+</section>
+
+<section id="method-assumed" data-pb-tab="method">
+  <h2>Hard-coded and assumed values</h2>
+  <!-- Every number or rule that is typed into the page or into the code that built it, rather than read from a source: thresholds, rates, exchange rates, cut-off dates,
+       sample sizes, default filters, labels that stand for a judgement. One row each. If the page has none, say "None". -->
+  <table data-pb-key="method-assumed">
+    <thead><tr><th>Value</th><th>Where it is used</th><th>Why this value</th><th>Who set it and when</th><th>Revisit when</th></tr></thead>
+    <tbody>
+    </tbody>
+  </table>
+</section>
+
+<section id="method-limits" data-pb-tab="method">
+  <h2>Limits: what this page cannot tell you</h2>
+  <!-- What is missing, late, estimated or out of scope; what a reader must not conclude from the figures. -->
+</section>
+
+<section id="method-open" data-pb-tab="method">
+  <h2>Open topics</h2>
+  <!-- Questions nobody has answered yet, known defects, and decisions waiting on someone, each with who it waits on. -->
+</section>
+
+<section id="method-rebuild" data-pb-tab="method">
+  <h2>How to rebuild or extend this page</h2>
+  <!-- For an agent with no context and no tool access: what to read first, what it needs and where to get it, the steps in order, what it must not change
+       (keys, ids, header texts), and what it must ask the owner for instead of guessing. -->
+</section>
