@@ -12,6 +12,7 @@ Three layers, later wins: the catalog's defaults, the person's own file, a proje
   options.py unset <id> [--project]          back to the layer below
   options.py done                   record that the first-launch proposal was shown and answered
   options.py page-config            JSON of the 'page' options, for PB_CONFIG.defaults
+  options.py header-texts           JSON of the two header link texts the person (or a project) has set, for the injector; {} when none
 Reads and writes only the two option files. No network, no other files."""
 import io, json, os, sys
 
@@ -140,6 +141,8 @@ def main(argv):
             if not rest:
                 raise SystemExit("set needs a value")
             vals[i] = coerce(opts[i], rest[0])
+            if opts[i].get("type") == "text" and len(" ".join(str(vals[i]).split())) > 40 and i.startswith("header.question_link"):
+                print("note: only the first 40 characters of this text are used on a page")
         else:
             vals.pop(i, None)
         save(path, data)
@@ -152,6 +155,14 @@ def main(argv):
         print("first launch recorded in " + up)
     elif cmd == "page-config":
         print(json.dumps({i: eff(i)[0] for i, o in opts.items() if o["applies"] == "page"}, ensure_ascii=False))
+    elif cmd == "header-texts":   # 0.4.1: only what a person or a project set (a default is the include file's own wording); plain text, one line, at most 40 characters
+        out = {}
+        for oid, key in (("header.question_link_live", "questions_live"), ("header.question_link_headless", "questions_label")):
+            if oid in opts and eff(oid)[1] != "default":
+                t = " ".join(str(eff(oid)[0]).split())[:40].strip()
+                if t:
+                    out[key] = t
+        print(json.dumps(out, ensure_ascii=False))
     else:
         raise SystemExit(__doc__)
 

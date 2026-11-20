@@ -5,7 +5,7 @@ For page builders that cannot paste the snippet by hand (a script that writes th
 after the page is written:
 
     python inject_stagecraft.py <page.html> [--out <new.html>] [--seat NAME] [--session UUID] [--account NAME]
-        [--headless] [--questions URL] [--published "YYYY-MM-DD HH:MM"] [--period-min 50] [--key KEY] [--snippet PATH]
+        [--headless] [--questions URL] [--source URL] [--published "YYYY-MM-DD HH:MM"] [--period-min 50] [--key KEY] [--snippet PATH]
         [--defaults-json FILE]
 
 It is idempotent: a page that already carries data-playbook and an element with id pb-options is left alone (exit 0).
@@ -21,7 +21,7 @@ without defaults (Stagecraft then uses the catalog defaults) and a note says so.
 The older header (0.3.4). Stagecraft replaces the artifact header of the parley skill (its style block, its header box and detail
 slider, its script with `var AH = {...}`; both use the element ids ah, ah-rail, ah-lvl and ah-pin). A page carrying both shows two
 headers, two sliders and two Pin to top buttons, so this script REMOVES the older header, whether the page has Stagecraft yet or
-not, and carries its author values (seat, session, home as the account, headless, questions, published, period_min) into
+not, and carries its author values (seat, session, home as the account, headless, questions, source, published, period_min) into
 PB_CONFIG.header: a value the page already gives there wins; a value given on the command line beats the older header's. A page
 with Stagecraft and the older header is repaired (the older header goes, nothing else changes). If the older header cannot be found
 whole (a style block, a header box, a slider and a script that holds `var AH` and nothing else but its own function) nothing is
@@ -52,6 +52,16 @@ def part(text, name):
     if not m:
         raise ValueError("marked part PB:%s not found in the snippet" % name)
     return m.group(1)
+
+
+def read_header_texts():
+    """0.4.1: the question-link words the person (or a project file) set, as {"questions_live": ..., "questions_label": ...}; {} when none or when they cannot be read."""
+    try:
+        r = subprocess.run([sys.executable, "-I", "-B", os.path.join(HERE, "options.py"), "header-texts"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+        d = json.loads(r.stdout.decode("utf-8")) if r.returncode == 0 else {}
+        return {k: v for k, v in d.items() if k in ("questions_live", "questions_label") and isinstance(v, str) and v.strip()} if isinstance(d, dict) else {}
+    except Exception:
+        return {}
 
 
 def read_defaults(path):
@@ -223,7 +233,7 @@ def remove_spans(text, spans):
 def carried(ah):
     """The author values of an older header, as PB_CONFIG.header keys; the older header's home (a colour) stands in for the account."""
     h = {}
-    for k in ("seat", "session", "questions", "published"):
+    for k in ("seat", "session", "questions", "source", "published"):
         if isinstance(ah.get(k), str):
             h[k] = ah[k]
     acct = ah.get("account") if isinstance(ah.get("account"), str) and ah.get("account") else ah.get("home")
@@ -263,6 +273,7 @@ def main(argv=None):
     ap.add_argument("--account", default="")
     ap.add_argument("--headless", action="store_true")
     ap.add_argument("--questions", default="")
+    ap.add_argument("--source", default="")        # 0.4.1: a headless page says "Source: link, question page"
     ap.add_argument("--published", default="")
     ap.add_argument("--period-min", type=int, default=None)
     ap.add_argument("--key", default="")
@@ -301,10 +312,13 @@ def main(argv=None):
         if defaults is None:
             print("note: the settings could not be read, so no defaults were written; Stagecraft uses its own defaults.")
         fix = carried(old[1]) if old else {}
+        htexts = read_header_texts()   # 0.4.1: the person's own words for the question-page link; a value the page gives wins
         if "PB_CONFIG" not in text:
             h = {"seat": "unknown author", "session": "", "account": "", "headless": False, "questions": "", "published": "", "period_min": 50}
             h.update(fix)   # the older header's values beat the defaults, a value given on the command line beats both
-            for k, v in (("seat", a.seat), ("session", a.session), ("account", a.account), ("questions", a.questions), ("published", a.published)):
+            for k_, v_ in htexts.items():
+                h.setdefault(k_, v_)
+            for k, v in (("seat", a.seat), ("session", a.session), ("account", a.account), ("questions", a.questions), ("source", a.source), ("published", a.published)):
                 if v:
                     h[k] = v
             if a.headless:
@@ -326,6 +340,8 @@ def main(argv=None):
         else:
             if old:
                 cfg += carry_script(fix, old[1].get("detail") is False, True)
+            if htexts:     # each line sets its key only when the page's own header leaves it empty: a page's own value wins
+                cfg += "<script>\nPB_CONFIG.header = PB_CONFIG.header || {};\n" + "".join("if (PB_CONFIG.header.%s == null) PB_CONFIG.header.%s = %s;\n" % (k_, k_, jsdump(v_)) for k_, v_ in sorted(htexts.items())) + "</script>\n"
             if defaults is not None and not re.search(r"(\bdefaults[\"']?\s*:\s*\{|PB_CONFIG\.defaults\s*=)", text):
                 cfg += "<script>\nPB_CONFIG.defaults = PB_CONFIG.defaults || %s;\n</script>\n" % jsdump(defaults)
         top = "<!-- PB:STYLE -->\n" + style + "\n<!-- PB:HEADER -->\n" + header + "\n"

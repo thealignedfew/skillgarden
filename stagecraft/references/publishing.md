@@ -53,7 +53,7 @@ Only when `publish.other_accounts` is `headless`.
 4. Parse the marker as a whole line. A substring test passes on a run that only mentions the marker.
 5. Pin every scheduled publish to the owning account's folder. A job that uses whichever account the default login is on breaks the day someone signs in again.
 6. Never read, print or copy the credentials file inside a configuration folder. Only ever point at the folder.
-7. Set the header's headless flag on the page and declare no comment capability: nobody is watching a headless page, and it should say so.
+7. Set the header's headless flag on the page and declare no comment capability: nobody is watching a headless page, and it should say so. Also set `PB_CONFIG.header.source` to the address of the live page the copy was made from (`--source URL` on the injector): the header's owner line then reads "Source: link" and "question page" instead of "Questions: the author's question page".
 
 When the same email address belongs to two organizations, name the configuration folder, not the email.
 

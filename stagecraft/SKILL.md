@@ -6,7 +6,7 @@ description: How to build, lay out and publish an artifact page so it fits the p
 
 # Stagecraft
 
-Version 0.4.0. A page built with stagecraft behaves like a small app: it fits the window it is opened in, its tables can be sorted, filtered and rearranged, it remembers how its reader set it up, and it can ask its reader a question and carry the answer back to the session that made it.
+Version 0.4.1. A page built with stagecraft behaves like a small app: it fits the window it is opened in, its tables can be sorted, filtered and rearranged, it remembers how its reader set it up, and it can ask its reader a question and carry the answer back to the session that made it.
 
 Stagecraft has two halves, and the split matters.
 
@@ -75,7 +75,7 @@ While `coach.tips` is on, add one line when you hand over a page naming the sing
 ## Building a page
 
 1. Write the content: `<title>`, then your own markup. Use the colour tokens the include file defines (`--bg --surface --fg --muted --line --accent --accent-soft --ask --ask-soft --ok --warn --warn-soft`) for every colour of your own, so both themes keep their contrast.
-2. Add the include file, `assets/stagecraft-snippet.html`: parts `PB:STYLE` and `PB:HEADER` first in the content, `PB:SCRIPT` last. Or run `python scripts/inject_stagecraft.py page.html --seat <author> --session <session id> --key <page-key>` after a script has written the page; it is safe to run twice. Stagecraft replaces the older artifact header of the parley skill (its header box, detail slider and Pin to top button), so a page never carries both: two headers, two sliders and two Pin to top buttons are what both produce. The script takes the older header out when it finds one, and a page pasted together by hand keeps Stagecraft's own and hides the other (`PB.layout.report().foreign` says so).
+2. Add the include file, `assets/stagecraft-snippet.html`: parts `PB:STYLE` and `PB:HEADER` first in the content, `PB:SCRIPT` last. Or run `python scripts/inject_stagecraft.py page.html --seat <author> --session <session id> --key <page-key>` after a script has written the page; it is safe to run twice. Stagecraft replaces the older artifact header of the parley skill (its header box, detail slider and Pin to top button), so a page never carries both: two headers, two sliders and two Pin to top buttons are what both produce. The script takes the older header out when it finds one, and a page pasted together by hand keeps Stagecraft's own and hides the other (`PB.layout.report().foreign` says so). A page published headless (a copy made by a script or by another login) also gives `PB_CONFIG.header.source`, the address of the page it was copied from (`--source URL` on the injector): its header then reads "Source: link" and "question page" in place of "Questions: the author's question page". The words of that second link are the person's to choose, once: the settings `header.question_link_live` and `header.question_link_headless` (plain text, at most 40 characters); the injector writes them into `PB_CONFIG.header` as `questions_live` and `questions_label` unless the page gives its own.
 3. Define the page before the script. `defaults` is the output of `options.py page-config`: paste it, do not retype it.
 
 ```html
