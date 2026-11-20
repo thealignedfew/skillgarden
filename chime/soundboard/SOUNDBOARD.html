@@ -1,0 +1,943 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Soundboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a mixing console. A clock strip on top, then the usage alarms, then one channel strip per sound with its own mute and tools,
+   then the rules, then the alias patch bay (desktops and sessions), then the request log. Tokens: one neutral palette, light and dark. */
+:root {
+  --bg: #f6f7f9; --surface: #ffffff; --fg: #1b1f24; --muted: #4a525c; --line: #5b6b82; --accent: #2c4a7a;
+  --accent-soft: #e4ebf5; --ask: #9a1b0d; --ask-soft: #fbe6e3; --ok: #276221; --hair: #d5dae2; --led-off: #c5ccd6;
+  --f-display: "Chakra Petch", "Bahnschrift", "Arial Narrow", sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not([data-ptheme="light"]) {
+  --bg: #14181d; --surface: #1c2229; --fg: #e6e9ee; --muted: #b9c0ca; --line: #6b7a90; --accent: #8fb4ee;
+  --accent-soft: #25324a; --ask: #ff9a7a; --ask-soft: #3a201a; --ok: #a9d48a; --hair: #2c343e; --led-off: #3a444f; color-scheme: dark; } }
+:root[data-theme="dark"]:not([data-ptheme="light"]), :root[data-ptheme="dark"] {
+  --bg: #14181d; --surface: #1c2229; --fg: #e6e9ee; --muted: #b9c0ca; --line: #6b7a90; --accent: #8fb4ee;
+  --accent-soft: #25324a; --ask: #ff9a7a; --ask-soft: #3a201a; --ok: #a9d48a; --hair: #2c343e; --led-off: #3a444f; color-scheme: dark; }
+:root[data-ptheme="light"] { color-scheme: light; }
+
+body { background: var(--bg); color: var(--fg); font: 15px/1.55 var(--f-body); }
+.wrap { max-width: 1600px; margin: 0 auto; padding-block: 20px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: .01em; }
+h1 { font-size: 34px; font-weight: 700; }
+h2 { font-size: 21px; font-weight: 600; }
+h3 { font-size: 15px; font-weight: 600; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--f-mono); font-size: 12.5px; }
+.label { font-family: var(--f-display); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+button, input, select { font: inherit; color: var(--fg); }
+button { cursor: pointer; border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 6px 12px; font-size: 13px; font-weight: 500; }
+button:hover { border-color: var(--accent); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+button.danger { border-color: var(--ask); color: var(--ask); }
+button:disabled { opacity: .5; cursor: default; }
+input[type=text], input[type=number], select { background: var(--surface); border: 1px solid var(--hair); border-radius: 6px; padding: 6px 9px; font-size: 13px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+header.top { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: end; border-bottom: 2px solid var(--line); padding-bottom: 14px; }
+header.top .sub { margin-top: 4px; }
+.themepick { font-size: 12px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+.sync { display: grid; gap: 6px; justify-items: end; text-align: right; }
+
+/* clock strip */
+.clock { display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: center; background: var(--surface); border: 1px solid var(--hair); border-radius: 10px; padding: 18px; }
+.lamp { width: 120px; height: 120px; border-radius: 50%; display: grid; place-items: center; text-align: center; border: 3px solid var(--line); font-family: var(--f-display); }
+.lamp b { display: block; font-size: 30px; line-height: 1; }
+.lamp span { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.lamp.in { border-color: var(--ok); color: var(--ok); }
+.lamp.out { border-color: var(--ask); color: var(--ask); background: var(--ask-soft); }
+.clock .body { display: grid; gap: 10px; min-width: 0; }
+
+/* channel strips */
+.desk { display: grid; gap: 18px; }
+.group { display: grid; gap: 8px; }
+.strips { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.strip { background: var(--surface); border: 1px solid var(--hair); border-radius: 8px; padding: 12px; display: grid; grid-template-rows: auto auto 1fr auto; gap: 8px; min-width: 0; }
+.strip.silenced { background: var(--accent-soft); }
+.strip .head { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.strip .name { font-family: var(--f-mono); font-weight: 500; font-size: 14px; overflow-wrap: anywhere; }
+.led { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); flex: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent); }
+.strip.silenced .led { background: var(--led-off); box-shadow: none; }
+.strip .when { font-size: 13px; color: var(--fg); }
+.strip .ctrl { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.mute { font-family: var(--f-display); font-weight: 700; letter-spacing: .06em; min-width: 44px; }
+.mute.on { background: var(--ask); border-color: var(--ask); color: var(--bg); }
+.chip { font-family: var(--f-display); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 2px 7px; border-radius: 99px; border: 1px solid var(--hair); color: var(--muted); white-space: nowrap; }
+.chip.pending { border-color: var(--accent); color: var(--accent); }
+.chip.off { border-color: var(--ask); color: var(--ask); }
+.chip.ok { border-color: var(--ok); color: var(--ok); }
+
+/* rules */
+.rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--hair); border-radius: 10px; padding: 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: auto auto; border: 1px solid var(--hair); border-radius: 8px; overflow: hidden; }
+.grid2 > div { padding: 10px; border-top: 1px solid var(--hair); font-size: 13px; }
+.grid2 > div:nth-child(-n+2) { border-top: 0; }
+.grid2 > div:nth-child(odd) { border-right: 1px solid var(--hair); }
+.grid2 .q { font-family: var(--f-display); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 3px; }
+ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13.5px; }
+
+/* patch bay */
+.scroll { overflow-x: auto; border: 1px solid var(--hair); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--hair); vertical-align: middle; }
+th { font-family: var(--f-display); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; background: var(--bg); position: sticky; top: 0; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+td button { padding: 3px 8px; font-size: 12px; }
+.desktops { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.dt { background: var(--surface); border: 1px solid var(--hair); border-radius: 8px; padding: 10px; display: grid; gap: 6px; }
+.dt .n { font-family: var(--f-display); color: var(--muted); font-size: 12px; }
+.dt .nm { font-family: var(--f-mono); font-size: 14px; overflow-wrap: anywhere; }
+.empty { padding: 18px; color: var(--muted); font-size: 13px; }
+.log li { font-size: 13px; }
+.note { font-size: 12.5px; color: var(--muted); }
+.toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 10px 14px; border-radius: 8px; font-size: 13px; max-width: min(420px, calc(100vw - 32px)); }
+/* the detail rail floats at the left (8px, 110px wide with its padding) from 1141px up: keep a 32px band beside it, and the same margin on the right so the content stays centred */
+@media (min-width: 1141px) { .wrap { margin-inline: max(152px, calc((100vw - 1600px) / 2)); } }
+
+/* capability line, usage alarms, per-sound source and tools */
+.caps { font-size: 13px; color: var(--ask); border: 1px solid var(--ask); background: var(--ask-soft); border-radius: 8px; padding: 6px 10px; }
+.firstrun { font-size: 13px; color: var(--fg); border: 1px dashed var(--line); border-radius: 8px; padding: 8px 12px; background: var(--surface); }
+.tablebox { border: 1px solid var(--hair); border-radius: 8px; background: var(--surface); }
+.tablebox.cols-open { overflow-x: auto; }
+.tablebox.cols-open #usage-table, .tablebox.cols-open #sess-table { width: auto; min-width: 100%; }
+table.one td, table.one th { white-space: nowrap; }
+table.one th { white-space: normal; }
+table.one td.read { max-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; font-family: var(--f-mono); font-size: 12.5px; }
+table.one td.acct { font-weight: 600; font-family: var(--f-mono); }
+.hot { color: var(--ask); font-weight: 600; }
+.sw { display: inline-flex; align-items: center; gap: 8px; padding: 2px 8px 2px 4px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line); font-size: 12.5px; }
+.sw .track { width: 34px; height: 18px; border-radius: 99px; background: var(--led-off); position: relative; flex: none; }
+.sw .track::after { content: ""; position: absolute; left: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); border: 1px solid var(--line); box-sizing: border-box; }
+.sw[aria-checked="true"] .track { background: var(--ask); }
+.sw[aria-checked="true"] .track::after { left: 18px; }
+.sw .st { font-weight: 600; }
+.usage-note { display: grid; gap: 4px; }
+.srcline { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.srcline b { color: var(--fg); font-weight: 600; }
+details.tune { border-top: 1px dashed var(--hair); padding-top: 6px; }
+details.tune > summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--accent); }
+details.tune .panel { display: grid; gap: 10px; padding-top: 8px; }
+details.tune .tl { font-family: var(--f-display); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+details.tune .msg { font-size: 12.5px; color: var(--ask); }
+details.tune .msg.ok { color: var(--ok); }
+.strip .tools { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.strip select { max-width: 100%; }
+.strips { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.strip { grid-template-rows: auto auto 1fr; grid-auto-rows: auto; }
+details.tune .panel { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.strip .tools > * { min-width: 0; }
+.strip .tools select { flex: 1 1 9em; max-width: 100%; text-overflow: ellipsis; }
+/* under 760px each usage row becomes a small card, so the whole reading and the alarm line stay visible */
+@media (max-width: 760px) {
+  #usage-table, #usage-table tbody { display: block; }
+  #usage-table thead { display: none; }
+  #usage-table tr { display: grid; gap: 4px; padding: 10px; border-bottom: 1px solid var(--hair); }
+  #usage-table td { display: block; border: 0; padding: 0; white-space: normal; max-width: none; overflow: visible; }
+  #usage-table td[data-l]::before { content: attr(data-l) ": "; color: var(--muted); font-family: var(--f-display); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  #usage-table td.read { width: auto; }
+}
+/* sessions table: one line per row; the least important columns drop as the window narrows (chip brings them back); under 760px each row becomes a small card */
+td.tt { max-width: 26ch; overflow: hidden; text-overflow: ellipsis; }
+td.sp { max-width: 22ch; overflow: hidden; text-overflow: ellipsis; }
+#sess-table td .acts { flex-wrap: nowrap; }
+#sess-table td .acts input { width: 112px !important; }
+@media (max-width: 1250px) { #sess-table .p3 { display: none; } }
+@media (max-width: 1000px) { #sess-table .p2 { display: none; } }
+.cols-open #sess-table .p1, .cols-open #sess-table .p2, .cols-open #sess-table .p3 { display: table-cell !important; }
+@media (max-width: 760px) {
+  #sess-cols { display: none; }
+  #sess-table, #sess-table tbody { display: block; }
+  #sess-table thead { display: none; }
+  #sess-table tr { display: grid; gap: 4px; padding: 10px; border-bottom: 1px solid var(--hair); }
+  #sess-table td { display: block; border: 0; padding: 0; white-space: normal; max-width: none; overflow: visible; }
+  #sess-table td .acts { flex-wrap: wrap; }
+  #sess-table .p1, #sess-table .p2, #sess-table .p3 { display: block !important; }
+  #sess-table td[data-l]::before { content: attr(data-l) ": "; color: var(--muted); font-family: var(--f-display); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+}
+@media (max-width: 640px) {
+  header.top { grid-template-columns: 1fr; }
+  .sync { justify-items: start; text-align: left; }
+  .clock { grid-template-columns: 1fr; }
+  .lamp { width: 96px; height: 96px; }
+  h1 { font-size: 28px; }
+}
+@media (prefers-reduced-motion: no-preference) { .led { transition: background .2s; } }
+
+
+.ah { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font: 12.5px/1.45 var(--body, inherit); color: var(--muted, #666); border: 1px solid var(--line, #ccc); border-radius: 10px; padding: 7px 12px; margin: 10px 0; background: var(--surface, transparent); }
+.ah b { color: var(--fg, inherit); font-weight: 600; }
+.ah .ah-uuid { font-family: var(--mono, ui-monospace, Consolas, monospace); font-size: 11.5px; overflow-wrap: anywhere; }
+.ah .ah-st { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--fg, inherit); }
+.ah .ah-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted, #999); flex: none; }
+.ah[data-live="green"] .ah-dot { background: var(--ok, #2d6a2a); }
+.ah[data-live="amber"] .ah-dot { background: var(--accent, #b07a00); }
+.ah[data-live="grey"] .ah-dot { background: var(--muted, #999); }
+.ah .ah-note { flex-basis: 100%; font-size: 12px; }
+.ah a { color: var(--accent, inherit); }
+.ah-rail { position: fixed; left: 8px; top: 50%; transform: translateY(-50%); z-index: 20; display: grid; gap: 6px; justify-items: center; background: var(--surface, var(--bg, #fff)); border: 1px solid var(--line, #ccc); border-radius: 12px; padding: 10px 6px; width: 96px; box-shadow: 0 2px 12px rgba(0,0,0,.10); }
+.ah-rail .t { font: 600 10px/1 var(--mono, monospace); letter-spacing: .08em; text-transform: uppercase; color: var(--muted, #666); }
+.ah-rail input[type="range"] { writing-mode: vertical-lr; direction: rtl; width: 22px; height: 110px; accent-color: var(--accent, #555); margin: 2px 0; cursor: ns-resize; }
+.ah-rail .lv { display: grid; gap: 2px; width: 100%; }
+.ah-rail .lv button { font: 500 11.5px/1.2 inherit; border: 1px solid transparent; background: transparent; color: var(--muted, #666); border-radius: 6px; padding: 3px 4px; cursor: pointer; }
+.ah-rail .lv button[aria-pressed="true"] { background: var(--accent, #555); color: var(--bg, #fff); font-weight: 600; }
+.ah-rail .hint { font-size: 10px; color: var(--muted, #666); text-align: center; line-height: 1.25; }
+@media (max-width: 1140px) { .ah-rail { position: static; transform: none; width: auto; grid-auto-flow: column; align-items: center; gap: 10px; padding: 6px 10px; box-shadow: none; margin: 8px 0; } .ah-rail input[type="range"] { writing-mode: horizontal-tb; direction: ltr; width: 110px; height: 22px; cursor: ew-resize; } .ah-rail .lv { grid-auto-flow: column; } .ah-rail .hint { display: none; } }
+body[data-lvl="0"] .l1, body[data-lvl="0"] .l2, body[data-lvl="0"] .l3, body[data-lvl="1"] .l2, body[data-lvl="1"] .l3, body[data-lvl="2"] .l3 { display: none !important; }
+</style>
+
+<div class="wrap">
+<div class="ah" id="ah" data-artifact-header="2.9" data-live="grey" role="note" aria-label="Who made this page and whether it is watched">
+  <span class="ah-st"><span class="ah-dot" aria-hidden="true"></span><span id="ah-status">Author status unknown</span></span>
+  <span>Authored by <b id="ah-seat">?</b> <span class="ah-uuid" id="ah-uuid"></span></span>
+  <span id="ah-home"></span>
+  <span id="ah-mode"></span>
+  <span id="ah-qwrap">Questions: <a id="ah-q" href="#" target="_blank" rel="noopener">its parley</a></span>
+  <span class="ah-note" id="ah-note"></span>
+</div>
+<div class="ah-rail" id="ah-rail" role="group" aria-label="Level of detail">
+  <span class="t">Detail</span>
+  <div class="lv">
+    <button type="button" data-lvl="3" aria-pressed="false">Exhaustive</button>
+    <button type="button" data-lvl="2" aria-pressed="false">Verbose</button>
+    <button type="button" data-lvl="1" aria-pressed="true">Concise</button>
+    <button type="button" data-lvl="0" aria-pressed="false">Zero</button>
+  </div>
+  <input type="range" id="ah-lvl" min="0" max="3" step="1" value="1" aria-label="Level of detail">
+  <span class="hint">scroll here or click</span>
+</div>
+
+  <header class="top">
+    <div>
+      <div class="label">Chime · every account on this PC</div>
+      <h1>Soundboard</h1>
+      <p class="note">Detail: Zero shows the clock, usage alarms and channels; Concise adds names and requests; Verbose adds how each turn picks its sound and the full usage readings.</p>
+      <p class="sub muted">Every sound your Claude sessions can play, what sets each one off, a mute on each, and a mute for each account's low-usage alarm. You can also replace a sound with your own file, generate one, or go back to the default. A button here queues a request. The session that owns this page applies it at its next check, or at once when you push with a comment.</p>
+    </div>
+    <div class="sync">
+      <label class="themepick">Theme <select id="ws-theme"><option value="auto">Auto</option><option value="dark">Dark</option><option value="light">Light</option></select></label>
+      <div class="mono muted" id="sync-line">Waiting for the board's data</div>
+      <div class="row" id="push-row"><button id="push" class="primary" type="button">Push now with a comment</button></div>
+    </div>
+  </header>
+
+  <p class="caps" id="caps" role="status" hidden></p>
+  <p class="firstrun" id="firstrun" hidden>First run: this board has no data yet. The session that owns this page writes it after each check, from <span class="mono">soundboard_sync.py state</span> and <span class="mono">soundboard_sync.py roster</span>. Until then the lists below are empty and nothing is selected. When you publish this page, fill in the block that starts <span class="mono">var AH =</span> near the end of the page: author, session, account, questions link.</p>
+
+  <section class="usage" aria-labelledby="usage-h" style="display:grid;gap:10px">
+    <div class="row" style="justify-content:space-between">
+      <h2 id="usage-h">Usage alarms</h2>
+      <span class="note" id="usage-asof">No usage state yet</span>
+    </div>
+    <p class="muted">Each account's low-usage alarm sounds when a limit reaches the alert line<span id="usage-line"></span>. Mute for this cycle silences only that account's low-usage alarm, and it ends by itself at the limit's reset. Other alarms and other accounts are not touched. Times are the PC's clock.</p>
+    <div class="tablebox" id="usage-box">
+      <table class="one" id="usage-table">
+        <thead><tr><th>Account</th><th>Last reading, per limit</th><th>Alarm</th><th>Mute for this cycle</th></tr></thead>
+        <tbody id="usage-body"><tr><td colspan="4" class="empty">Usage readings appear after the first sync.</td></tr></tbody>
+      </table>
+    </div>
+    <ul class="plain l2" id="usage-full"></ul>
+  </section>
+
+  <section class="clock" aria-labelledby="clock-h">
+    <div class="lamp in" id="lamp"><div><b id="lamp-word">IN</b><span id="lamp-since">clock</span></div></div>
+    <div class="body">
+      <h2 id="clock-h">Clock</h2>
+      <p class="muted">Clock out and every session knows you are away. Chime goes quiet. Blocked and ignored counts stop, so no loop moves up to #StandReadyHigh and nothing tries to reach you. Questions wait until you clock back in.</p>
+      <div class="row">
+        <input type="text" id="clock-note" placeholder="Optional: where you are, when you are back" aria-label="Clock note" style="flex:1 1 260px">
+        <button type="button" id="clock-out" class="danger" data-needs="db">Clock out</button>
+        <button type="button" id="clock-in" data-needs="db">Clock in</button>
+      </div>
+      <div class="note" id="clock-pending"></div>
+    </div>
+  </section>
+
+  <section class="desk" aria-labelledby="desk-h">
+    <div class="row" style="justify-content:space-between">
+      <h2 id="desk-h">Channels</h2>
+      <span class="note">M queues a mute. ▶ previews a generated tone in this page only; your own files play on your PC.</span>
+    </div>
+    <div id="groups"></div>
+    <div class="card">
+      <h3>questions</h3>
+      <p class="muted" style="font-size:13.5px">This sound plays only when a lead session surfaces its reports' questions on two ticks in a row. It plays at most once per cooldown across all sessions, so several leads cannot chain it. Any tick inside the cooldown plays its usual sound.</p>
+      <div class="row"><label class="note" for="qcd">Cooldown, minutes</label><input type="number" id="qcd" min="0" max="1440" step="15" style="width:96px"><button type="button" id="qcd-set" data-needs="db">Set cooldown</button><span class="chip" id="qcd-now">now 120</span></div>
+    </div>
+  </section>
+
+  <section class="l2" aria-labelledby="rules-h" style="display:grid;gap:14px">
+    <h2 id="rules-h">How a turn picks its sound</h2>
+    <div class="rules">
+      <div class="card">
+        <h3>A decision waiting on you</h3>
+        <p class="muted" style="font-size:13.5px">Only the reply's first line counts. Urgent and important each add a sound, in this order.</p>
+        <div class="grid2">
+          <div><span class="q">Urgent + important</span>urgent, boing, important<br><span class="muted">URGENT AND IMPORTANT, MAJOR PROBLEM FOUND</span></div>
+          <div><span class="q">Urgent only</span>urgent<br><span class="muted">URGENT DECISION NEEDED</span></div>
+          <div><span class="q">Important only</span>default, boing, important<br><span class="muted">IMPORTANT DECISION NEEDED, Decision needed</span></div>
+          <div><span class="q">Neither</span>the turn's own sound<br><span class="muted">by who started it, below</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Who started the turn</h3>
+        <ul class="plain">
+          <li><b>You</b>: ack when your prompt lands, done when it finishes.</li>
+          <li><b>Another session</b>: peer.</li>
+          <li><b>A loop tick</b>: #KeepWarm plays tick, #StandReady tick_ready, #StandReadyHigh tick_high, #StandReadyLow tick_low, #CompactionForm tick_compaction.</li>
+          <li><b>Anything else</b> (other scheduled jobs, background tasks, continuations): nothing unless it needs you.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>When a seat cannot reach you</h3>
+        <ul class="plain">
+          <li>A blocked tick plays urgent three times.</li>
+          <li>After three blocked ticks the loop moves up to #StandReadyHigh, with escalate.</li>
+          <li>Four needy #StandReadyHigh ticks with no prompt from you: abandon, and the loop drops to #StandReadyLow.</li>
+          <li>While it still needs you, each tick plays ignored alone.</li>
+          <li>Clocked out: none of this counts.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Always last, or alone</h3>
+        <ul class="plain">
+          <li>relay closes a reply that carries a baton for you to paste.</li>
+          <li>compact: auto-compaction, or a compaction prompt handed over, always the last sound.</li>
+          <li>low_health plays first, when an account is within 10% of a usage limit (every 30 minutes at most).</li>
+          <li>brakes is the only sound of a session under /brakes.</li>
+          <li>Muted (a Zoom meeting, the mute file, or clocked out): nothing plays and toasts are silent.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="l1" aria-labelledby="alias-h" style="display:grid;gap:14px">
+    <div class="row" style="justify-content:space-between">
+      <h2 id="alias-h">Names: desktops and sessions</h2>
+      <button type="button" id="regen" data-needs="db">Regenerate roster</button>
+    </div>
+    <p class="muted">These are the names chime uses: the virtual desktop names Windows keeps, and each session's tab title with the voice and words its name is spoken in. ▶ beside a voice plays that seat's name exactly as chime says it. New voice picks a random voice no other seat holds. Reset name drops a seat's own spoken words, so the title is read fresh.</p>
+    <h3>Virtual desktops</h3>
+    <div class="desktops" id="desktops"><div class="empty">Desktop names appear after the first roster read.</div></div>
+    <div class="row" style="justify-content:space-between;margin-top:6px">
+      <h3>Sessions <span class="muted mono" id="sess-count"></span></h3>
+      <div class="row">
+        <input type="text" id="sess-q" placeholder="Filter by name or voice" aria-label="Filter sessions" style="width:220px">
+        <select id="sess-home" aria-label="Home"><option value="">All homes</option></select>
+      </div>
+    </div>
+    <div class="tablebox" id="sess-box">
+      <table class="one" id="sess-table">
+        <thead><tr><th>Tab title</th><th class="p2">Home</th><th class="p3">Last active</th><th class="p1">Voice</th><th class="p2">Spoken as</th><th>Actions</th></tr></thead>
+        <tbody id="sess-body"><tr><td colspan="6" class="empty">Sessions appear after the first roster read.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="row"><button type="button" id="sess-more" hidden>Show all</button><button type="button" id="sess-cols" hidden>Show hidden columns</button></div>
+  </section>
+
+  <section class="l1" aria-labelledby="log-h" style="display:grid;gap:10px">
+    <h2 id="log-h">Requests</h2>
+    <p class="muted">Newest first. Pending rows are applied at the next tick or push.</p>
+    <ul class="plain log" id="log"><li class="muted">No requests yet. Press M on a channel, or clock out, to make the first.</li></ul>
+  </section>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* Fill these when publishing. session is the authoring session's full native UUID; headless is true when the page was
+   published through artifact-publish-as-account (claude -p), where no session is woken by comments. */
+var AH = { seat: "(your session name)", session: "(session id: set when you publish)", home: "(account)", headless: false,
+           questions: "", published: "", period_min: 50 };
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var box = $("ah");
+  $("ah-seat").textContent = AH.seat;
+  $("ah-uuid").textContent = AH.session;
+  $("ah-home").textContent = AH.home + " home";
+  $("ah-mode").textContent = (AH.headless ? "published headless" : "published from a live session") + (AH.published ? " " + AH.published : "");
+  if (AH.questions) $("ah-q").href = AH.questions; else $("ah-qwrap").hidden = true;
+  var ask = AH.questions ? " Ask on " + AH.seat + "'s parley instead." : "";
+  function show(state, text, note) { box.setAttribute("data-live", state); $("ah-status").textContent = text; $("ah-note").textContent = note || ""; }
+  function hhmm(d) { return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
+  var grey = "No live session watches comments here. A comment sent to Claude would open a new session with no context." + ask;
+  if (AH.headless) { show("grey", "Published headless: not watched", grey); }
+  else { show("grey", "Checking the author", ""); }
+  function judge(hb) {
+    if (!hb || !hb.last_seen) { show("grey", "Author not watching", grey); return; }
+    var seen = new Date(hb.last_seen), per = +(hb.period_min || AH.period_min || 50), age = (Date.now() - seen) / 60000;
+    if (hb.watching_comments === false) { show("grey", "Author not watching", grey); }
+    else if (age <= per + 10) { show("green", "Author live: watches comments", (hb.title || AH.seat) + " last checked in " + hhmm(seen) + "; a comment sent to Claude reaches it" + (hb.next_tick ? ", next check " + hb.next_tick : "") + "."); }
+    else if (age <= per * 3) { show("amber", "Author idle since " + hhmm(seen), "A comment sent to Claude reaches it when it next wakes; a reply may wait." + ask); }
+    else { show("grey", "Author gone quiet since " + hhmm(seen), grey); }
+  }
+  if (!AH.headless) {
+    (async function () {
+      var db = null;
+      try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch (e) { db = null; }
+      if (!db) { show("grey", "Author status not wired on this page", grey); return; }
+      try { db.doc("heartbeat/owner").onSnapshot(function (s) { judge(s.exists ? s.data() : null); }, function () { judge(null); }); }
+      catch (e) { judge(null); }
+    })();
+  }
+  /* parley 2.7 detail rail: buttons, the range, the scroll wheel over the rail and arrow keys; remembered per browser */
+  var NAMES = ["zero", "concise", "verbose", "exhaustive"], lvl = 1, rail = $("ah-rail"), range = $("ah-lvl");
+  function setLvl(n, save) {
+    n = Math.max(0, Math.min(3, n | 0)); lvl = n; document.body.setAttribute("data-lvl", String(n)); range.value = String(n);
+    rail.querySelectorAll("[data-lvl]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.lvl) === String(n) ? "true" : "false"); });
+    if (save) { try { localStorage.setItem("parley-detail", NAMES[n]); } catch (e) {} }
+  }
+  rail.addEventListener("click", function (ev) { var b = ev.target.closest("[data-lvl]"); if (b) setLvl(+b.dataset.lvl, true); });
+  range.addEventListener("input", function () { setLvl(+range.value, true); });
+  rail.addEventListener("wheel", function (ev) { ev.preventDefault(); setLvl(lvl + (ev.deltaY < 0 ? 1 : -1), true); }, { passive: false });
+  var start = 1; try { var sv = localStorage.getItem("parley-detail"); if (sv && NAMES.indexOf(sv) >= 0) start = NAMES.indexOf(sv); } catch (e) {}
+  setLvl(start, false);
+})();
+
+(function () {
+  var root = document.documentElement, pick = document.getElementById("ws-theme"), v = "auto";
+  try { v = localStorage.getItem("parley-theme") || "auto"; } catch (e) {}
+  if (v === "kimbie") v = "dark";
+  if (["auto", "dark", "light"].indexOf(v) < 0) v = "auto";
+  function apply(x) { if (x === "auto") root.removeAttribute("data-ptheme"); else root.setAttribute("data-ptheme", x); }
+  apply(v);
+  if (pick) { pick.value = v; pick.addEventListener("change", function () { apply(pick.value); try { localStorage.setItem("parley-theme", pick.value); } catch (e) {} }); }
+})();
+
+var CATALOG = [
+  { group: "Decisions", items: [
+    ["urgent", "decision sound", "URGENT DECISION NEEDED. First of the sounds for urgent + important and MAJOR PROBLEM FOUND. A blocked tick plays it three times."],
+    ["default", "decision sound", "Opens an IMPORTANT DECISION NEEDED or Decision needed reply (not urgent)."],
+    ["boing", "decision sound", "Bridge between the opener and the important sound on any important decision."],
+    ["important", "decision sound", "Closes every important decision and MAJOR PROBLEM FOUND."]]},
+  { group: "Loop ticks", items: [
+    ["tick", "loop tick", "#KeepWarm ticks with nothing for you."],
+    ["tick_ready", "loop tick", "#StandReady ticks with nothing for you."],
+    ["tick_high", "loop tick", "#StandReadyHigh ticks with nothing for you."],
+    ["tick_low", "loop tick", "#StandReadyLow ticks with nothing for you."],
+    ["tick_compaction", "loop tick", "#CompactionForm ticks, while a session waits out a compaction."]]},
+  { group: "Turns", items: [
+    ["ack", "turn sound", "Your own prompt has reached a session."],
+    ["done", "turn sound", "A session finished a turn you started. Never on ticks, peer messages or scheduled jobs."],
+    ["peer", "turn sound", "A session finished a turn another session started."],
+    ["relay", "turn sound", "The reply carries a baton for you to paste."],
+    ["compact", "turn sound", "Auto-compaction, or a compaction prompt handed to you. Always last."]]},
+  { group: "Escalation", items: [
+    ["questions", "escalation", "A lead session surfaced its reports' questions two ticks running. At most once per cooldown."],
+    ["escalate", "escalation", "A blocked seat's loop moves up to #StandReadyHigh."],
+    ["abandon", "escalation", "A seat stops trying after several needy #StandReadyHigh ticks and drops to #StandReadyLow."],
+    ["ignored", "escalation", "An ignored seat still needs you. Plays alone."]]},
+  { group: "Alarms", items: [
+    ["red_alert", "alarm", "RED ALERT: a session found a material risk or deficiency itself. Plays alone. Each firing is recorded so you can rule it merited or not merited."],
+    ["low_health", "alarm", "An account is within 10% of a usage limit. Every 30 minutes at most, per account."],
+    ["brakes", "alarm", "The only sound of a session under /brakes."]]}
+];
+
+var state = { roster: null, reqs: [], reqA: [], reqB: [], db: null, user: null, comments: null, assets: null, userId: "", canWrite: null,
+  usage: null, sounds: null, showAll: false, booted: false };
+var $ = function (id) { return document.getElementById(id); };
+function el(tag, attrs, kids) {
+  var n = document.createElement(tag);
+  if (attrs) Object.keys(attrs).forEach(function (k) {
+    if (attrs[k] == null) return;
+    if (k === "text") n.textContent = attrs[k]; else if (k === "cls") n.className = attrs[k];
+    else if (k === "on") Object.keys(attrs.on).forEach(function (ev) { n.addEventListener(ev, attrs.on[ev]); });
+    else n.setAttribute(k, attrs[k]);
+  });
+  (kids || []).forEach(function (c) { if (c) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+  return n;
+}
+var toastT;
+function say(msg) { var t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { t.hidden = true; }, 3800); }
+function pending(kind, target) { return state.reqs.filter(function (r) { return r.status === "pending" && r.kind === kind && (target == null || r.target === target); }); }
+function silencedSet() { return (state.roster && state.roster.silenced) || {}; }
+
+async function request(kind, target, note) {
+  if (!state.db) { say("The board is read-only here: requests need a signed-in viewer who can edit it."); return; }
+  try {
+    await state.db.collection("requests").add({ kind: kind, target: String(target == null ? "" : target), note: note || "",
+      status: "pending", result: "", created: new Date().toISOString() });
+    say("Queued. It applies at the next tick, or push now with a comment.");
+  } catch (e) { say("Could not queue that: " + ((e && e.message) || "the board refused the write") + "."); }
+}
+
+/* ---------- usage alarms, where each sound comes from, Replace, Generate, Reset ----------
+   Requests of these four kinds carry `type` (the older kinds carry `kind`), exactly the documents of the chime contract, section 3. */
+var MAX_BYTES = 5 * 1024 * 1024, EXTS = ["mp3", "wav", "ogg", "m4a"], MIMES = { mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", m4a: "audio/mp4" };
+var ui = { open: {}, ev: {}, style: {}, busy: {}, msg: {}, cols: false, sessCols: false };
+
+function baseName(f) { return String(f || "").split(/[\\/]/).pop().replace(/^user:/, ""); }
+function reqTime(r) { return r.created || r.at || ""; }
+function when(s) { s = String(s || ""); return /^\d{4}-\d\d-\d\d[T ]\d\d:\d\d/.test(s) ? s.slice(5, 10) + " " + s.slice(11, 16) : s; }
+function ms(s) { var t = Date.parse(s); return isNaN(t) ? 0 : t; }
+function mergeReqs() {
+  var seen = {}, all = [];
+  state.reqA.concat(state.reqB).forEach(function (r) { if (!seen[r.id]) { seen[r.id] = 1; all.push(r); } });
+  all.sort(function (a, b) { return reqTime(a) < reqTime(b) ? 1 : reqTime(a) > reqTime(b) ? -1 : 0; });
+  state.reqs = all;
+}
+/* write one request document of the chime contract: type and its fields, then status, at, by, and nothing else */
+async function request2(fields) {
+  if (!state.db) { say("The board is read-only here: requests need a signed-in viewer who can edit it."); return false; }
+  var doc = {}; Object.keys(fields).forEach(function (k) { doc[k] = fields[k]; });
+  doc.status = "pending"; doc.at = new Date().toISOString(); doc.by = state.userId || "";
+  try { await state.db.collection("requests").add(doc); say("Requested. It is applied at the next check, or push now with a comment."); return true; }
+  catch (e) { say("Could not request that: " + ((e && e.message) || "the board refused the write") + "."); return false; }
+}
+/* a request still waiting: pending, or done but the state document has not been refreshed since it was done */
+function waiting(r, syncedAt, confirmed) {
+  if (!r) return null;
+  if (r.status === "pending") return { t: "requested, applied at the next check", c: "pending", busy: true };
+  if (r.status === "done" && !confirmed && ms(syncedAt) <= ms(r.done_at || reqTime(r))) return { t: "requested, applied at the next check", c: "pending", busy: true };
+  if (r.status === "failed") return { t: "request failed: " + (r.result || "no reason given"), c: "off", busy: false };
+  return null;
+}
+function latest(pred) { for (var i = 0; i < state.reqs.length; i++) { if (pred(state.reqs[i])) return state.reqs[i]; } return null; }
+
+/* usage alarms */
+function usageRows() { return (state.usage && state.usage.accounts) || []; }
+function readingText(row) {
+  var lr = row.last_reading;
+  if (!lr || !(lr.values || []).length) return "no reading yet";
+  return lr.values.map(function (v) { return v.limit + " " + Math.round(v.pct) + "%" + (v.resets_at ? " resets " + when(v.resets_at) : ""); }).join(" · ") + " · as of " + when(lr.at);
+}
+function renderUsage() {
+  var u = state.usage, body = $("usage-body"); body.textContent = "";
+  var rows = usageRows();
+  $("usage-asof").textContent = u ? "State as of " + when(u.synced_at) + " (PC time)" : "No usage state yet";
+  $("usage-line").textContent = u && u.alert_pct != null ? " (" + u.alert_pct + "%)" : "";
+  var full = $("usage-full"); full.textContent = "";
+  if (!rows.length) { body.appendChild(el("tr", {}, [el("td", { colspan: "4", cls: "empty", text: u ? "The sync reported no accounts." : "Usage readings appear after the first sync." })])); }
+  rows.forEach(function (row) {
+    var muted = !!row.muted, alert = u.alert_pct == null ? 90 : u.alert_pct;
+    var lastReq = latest(function (r) { return r.type === "usage_mute" && String(r.account).toLowerCase() === String(row.account).toLowerCase(); });
+    var wait = waiting(lastReq, u.synced_at, !!lastReq && muted === !!lastReq.on);     /* the state document says the same as the request: confirmed */
+    var lr = row.last_reading, read = el("td", { cls: "read", "data-l": "Last reading", title: readingText(row) });
+    if (!lr || !(lr.values || []).length) read.textContent = "no reading yet";
+    else {
+      lr.values.forEach(function (v, i) {
+        if (i) read.appendChild(document.createTextNode(" · "));
+        read.appendChild(el("span", { cls: Number(v.pct) >= alert ? "hot" : "", text: v.limit + " " + Math.round(v.pct) + "%" }));
+        if (v.resets_at) read.appendChild(document.createTextNode(" resets " + when(v.resets_at)));
+      });
+    }
+    var alarm = muted ? "Muted until " + when(row.until) + (row.by ? " by " + row.by : "") + (row.until_source === "fallback_24h" ? " (reset time unknown, 24 hours)" : "")
+      : row.marker_quiet_until ? "Quiet until " + when(row.marker_quiet_until) + " (old marker file)" : "Alarm on";
+    var label = (muted ? "Unmute " : "Mute for this cycle: ") + row.account;
+    var sw = el("button", { type: "button", cls: "sw", role: "switch", "aria-checked": muted ? "true" : "false", "aria-label": label, title: label, "data-needs": "db",
+      on: { click: function () { request2({ type: "usage_mute", account: row.account, on: !muted }); } } },
+      [el("span", { cls: "track", "aria-hidden": "true" }), el("span", { cls: "st", text: wait ? wait.t : muted ? "Muted" : "Off" })]);
+    if (wait && wait.busy) sw.disabled = true;
+    body.appendChild(el("tr", {}, [el("td", { cls: "acct", text: row.account, title: row.home || "" }), read,
+      el("td", { "data-l": "Alarm", text: alarm }), el("td", { "data-l": "Mute for this cycle" }, [sw, wait && !wait.busy ? el("span", { cls: "chip off", style: "margin-left:8px", text: wait.t }) : null])]));
+    full.appendChild(el("li", {}, [el("b", { text: row.account }), ": " + readingText(row) + ". " + alarm + (row.why ? " Reason: " + row.why + "." : "")]));
+  });
+}
+
+/* sounds: where each file comes from */
+function soundEvents() { return (state.sounds && state.sounds.events) || []; }
+function eventsFor(name) { return soundEvents().filter(function (e) { return e.name === name; }); }
+function srcWord(e) {
+  var f = baseName(e.file);
+  if (e.source === "user") return "Your own file";
+  if (e.source === "generated") { var m = /^gen-.+-([a-z]+)\.wav$/.exec(f); return "Generated" + (m ? ", " + m[1] : ""); }
+  return "Default sound";
+}
+function sourceLine(name) {
+  var evs = eventsFor(name);
+  if (!evs.length) return el("div", { cls: "srcline", text: state.sounds ? "Not reported by chime." : "Source shown after the first sync." });
+  return el("div", { cls: "srcline" }, evs.map(function (e) {
+    return el("div", {}, [evs.length > 1 ? el("span", { cls: "mono", text: e.event + ": " }) : null, el("b", { text: srcWord(e) }), " · " + baseName(e.file),
+      e.exists === false ? el("span", { cls: "chip off", style: "margin-left:6px", text: "file missing" }) : null]);
+  }));
+}
+
+/* styles: accept the shapes `sounds styles --json` may print (an object keyed by style, an object with a styles key, or a list) */
+function styleList() {
+  var raw = state.sounds && state.sounds.styles, out = [];
+  if (!raw) return out;
+  if (!Array.isArray(raw) && raw.styles && typeof raw.styles === "object") raw = raw.styles;
+  if (Array.isArray(raw)) raw.forEach(function (x) { if (x) out.push({ id: x.style || x.name || x.id, label: x.label || x.title || x.about || "", segments: x.segments || x.recipe || [] }); });
+  else Object.keys(raw).forEach(function (k) { var x = raw[k]; out.push(Array.isArray(x) ? { id: k, label: "", segments: x } : { id: k, label: (x && (x.label || x.title || x.about)) || "", segments: (x && (x.segments || x.recipe)) || [] }); });
+  return out.filter(function (s) { return s.id && s.segments && s.segments.length; });
+}
+/* Web Audio: one recipe, played in order. A segment starts when the one before ends plus its gap_ms; a negative gap overlaps. */
+function segParts(sg) {
+  var f = Array.isArray(sg.freq) ? sg.freq : [sg.freq, sg.freq];
+  var dur = Math.max(1, Math.min(1500, +sg.ms || 100));
+  return { type: ["sine", "square", "triangle", "sawtooth"].indexOf(sg.type) >= 0 ? sg.type : "sine", f0: Math.max(20, +f[0] || 440), f1: Math.max(20, +(f[1] != null ? f[1] : f[0]) || 440),
+    dur: dur, gain: sg.gain == null ? 0.3 : Math.max(0, Math.min(1, +sg.gain)), att: Math.max(0, +sg.attack_ms || 5), rel: Math.max(0, +sg.release_ms || 20), gap: +sg.gap_ms || 0 };
+}
+function recipeEnd(segs) {
+  var t = 0, end = 0;
+  segs.slice(0, 32).forEach(function (sg) { var p = segParts(sg); end = Math.max(end, t + p.dur); t += Math.max(0, p.dur + p.gap); });
+  return end / 1000;
+}
+/* gain envelope as chime.py draws it: the attack ramp and the release ramp, whichever is lower, so a long release on a short sound starts below full */
+function envPoints(a, r, s) {
+  var f = function (x) { var e = 1; if (a > 0) e = Math.min(e, x / a); if (r > 0) e = Math.min(e, (s - x) / r); return Math.max(0, e); };
+  var ts = [0, s]; if (a > 0 && a < s) ts.push(a); if (r > 0 && s - r > 0) ts.push(s - r); if (a > 0 && r > 0) ts.push(s * a / (a + r));
+  ts = ts.filter(function (x) { return x >= 0 && x <= s; }).sort(function (x, y) { return x - y; });
+  return ts.filter(function (x, i) { return !i || x > ts[i - 1] + 1e-9; }).map(function (x) { return [x, f(x)]; });
+}
+/* the browser's built-in square is scaled down to keep its overshoot inside 1; chime.py's is a full +1 / -1 square, so build one with unscaled odd harmonics */
+var sqWave = null;
+function squareWave(ctx) {
+  if (!sqWave || sqWave.ctx !== ctx) {
+    var re = new Float32Array(65), im = new Float32Array(65);
+    for (var n = 1; n < 65; n += 2) im[n] = 4 / (Math.PI * n);
+    sqWave = { ctx: ctx, w: ctx.createPeriodicWave(re, im, { disableNormalization: true }) };
+  }
+  return sqWave.w;
+}
+function buildGraph(ctx, segs, dest, t0) {
+  var t = t0 || 0, master = ctx.createGain(); master.gain.value = 1; master.connect(dest);
+  segs.slice(0, 32).forEach(function (sg) {
+    var p = segParts(sg), s = p.dur / 1000, pts = envPoints(p.att / 1000, p.rel / 1000, s);
+    var osc = ctx.createOscillator(), g = ctx.createGain();
+    if (p.type === "square") osc.setPeriodicWave(squareWave(ctx)); else osc.type = p.type;
+    osc.frequency.setValueAtTime(p.f0, t); osc.frequency.linearRampToValueAtTime(p.f1, t + s);
+    g.gain.setValueAtTime(pts[0][1] * p.gain, t + pts[0][0]);
+    for (var k = 1; k < pts.length; k++) g.gain.linearRampToValueAtTime(pts[k][1] * p.gain, t + pts[k][0]);
+    osc.connect(g); g.connect(master); osc.start(t); osc.stop(t + s + 0.01);
+    t += Math.max(0, (p.dur + p.gap) / 1000);
+  });
+  return master;
+}
+var pctx = null;
+function previewStyle(id) {
+  var st = styleList().filter(function (s) { return s.id === id; })[0];
+  if (!st) { say("No recipe for that style yet."); return; }
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) { say("This browser cannot play the preview."); return; }
+    if (pctx) { try { pctx.close(); } catch (e) {} }
+    pctx = new AC(); buildGraph(pctx, st.segments, pctx.destination, pctx.currentTime + 0.03);
+  } catch (e) { say("The preview could not play: " + ((e && e.message) || "audio is blocked") + "."); }
+}
+
+/* Replace: check the file here, wrap it so the platform's upload accepts it, upload, then write the request */
+/* the formats the player can play: from the sync's `accepts` when chime reports it, else the four the page can check */
+function okExts() {
+  var a = state.sounds && state.sounds.accepts;
+  if (Array.isArray(a) && a.length) { var r = a.map(function (x) { return String(x).replace(/^\./, "").toLowerCase(); }).filter(function (x) { return MIMES[x]; }); if (r.length) return r; }
+  return EXTS.slice();
+}
+function extWords() { var w = okExts(), last = w.pop(); return w.length ? w.join(", ") + " or " + last : last; }
+function fileExt(name) { var m = /\.([A-Za-z0-9]+)$/.exec(name || ""); return m ? m[1].toLowerCase() : ""; }
+async function looksAudio(file) {
+  var b = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  var s = function (o, n) { return String.fromCharCode.apply(null, Array.prototype.slice.call(b, o, o + n)); };
+  return s(0, 3) === "ID3" || (b[0] === 0xFF && (b[1] & 0xE0) === 0xE0) || (s(0, 4) === "RIFF" && s(8, 4) === "WAVE") || s(0, 4) === "OggS" || s(4, 4) === "ftyp";
+}
+function b64Of(file) {
+  return new Promise(function (res, rej) { var fr = new FileReader(); fr.onload = function () { res(String(fr.result).slice(String(fr.result).indexOf(",") + 1)); }; fr.onerror = function () { rej(fr.error); }; fr.readAsDataURL(file); });
+}
+var UPLOAD_WHY = { too_large: "The platform refused it as too large.", unsupported_type: "The platform refused this kind of file.", quota_or_state: "This page's storage is full or the page is not published.",
+  rate_limited: "Too many uploads at once. Wait a moment and try again.", upstream_auth: "Reload the page and sign in again.", store_unavailable: "The store is busy. Try again in a moment.",
+  not_granted: "Uploads are not allowed on this view.", capability_disabled: "Uploads are not available on this view.", capability_removed: "Uploads are not available on this view." };
+async function replaceFile(name, event, file) {
+  var say2 = function (t, ok) { ui.msg[name] = { t: t, ok: !!ok }; renderChannels(); };
+  if (!file) return;
+  var ext = fileExt(file.name);
+  if (okExts().indexOf(ext) < 0) { say2("Not used: " + file.name + " is not an accepted audio file. Use " + extWords() + "."); return; }
+  if (!file.size) { say2("Not used: " + file.name + " is empty."); return; }
+  if (file.size > MAX_BYTES) { say2("Not used: " + file.name + " is " + (file.size / 1048576).toFixed(1) + " MB; the limit is 5 MB."); return; }
+  var ok = false; try { ok = await looksAudio(file); } catch (e) { ok = false; }
+  if (!ok) { say2("Not used: " + file.name + " does not look like an audio file."); return; }
+  if (!state.assets) { say2("Uploads are not available here, so Replace is off."); return; }
+  if (!state.db) { say2("The board is read-only here: nothing can be requested."); return; }
+  ui.busy[name] = true; ui.msg[name] = { t: "Uploading " + file.name + "...", ok: true }; renderChannels();
+  var id = null;
+  try {
+    var b64 = await b64Of(file);
+    var env = new Blob(['{"format":"soundboard-audio-1","filename":' + JSON.stringify(file.name) + ',"mime":' + JSON.stringify(MIMES[ext]) + ',"size":' + file.size + ',"data_base64":"', b64, '"}'], { type: "application/json" });
+    var up = await state.assets.upload(env, { type: "application/json" });
+    id = up && up.id;
+    if (!id) throw { code: "upstream_error" };
+    var wrote = await request2({ type: "sound_replace", event: event, asset_id: id, filename: file.name });
+    if (!wrote) { try { await state.assets.delete(id); } catch (e) {} ui.msg[name] = { t: "The file was uploaded but the request could not be written, so it was removed. Try again.", ok: false }; }
+    else ui.msg[name] = { t: "Requested: " + file.name + ". It is applied at the next check.", ok: true };
+  } catch (e) {
+    ui.msg[name] = { t: "Upload failed. " + (UPLOAD_WHY[e && e.code] || ((e && e.message) || "Try again.")), ok: false };
+  }
+  delete ui.busy[name]; renderChannels();
+}
+/* the sounds state shows what the request asked for */
+function soundConfirmed(r, evs) {
+  var e = evs.filter(function (x) { return x.event === r.event; })[0];
+  if (!e) return false;
+  if (r.type === "sound_reset") return e.source === "default";
+  if (r.type === "sound_replace") return e.source === "user";
+  return e.source === "generated" && baseName(e.file).indexOf("-" + r.style + ".") > 0;
+}
+function eventPick(name, evs) { return evs.length === 1 ? evs[0].event : (ui.ev[name] || ""); }
+function tunePanel(name) {
+  var evs = eventsFor(name), styles = styleList(), live = !!state.sounds && evs.length > 0;
+  var chosen = eventPick(name, evs), mine = evs.map(function (e) { return e.event; });
+  var lastReq = latest(function (r) { return /^sound_(replace|generate|reset)$/.test(r.type) && mine.indexOf(r.event) >= 0; });
+  var wait = waiting(lastReq, state.sounds && state.sounds.synced_at, !!lastReq && soundConfirmed(lastReq, evs));
+  var busy = !!ui.busy[name] || (wait && wait.busy);
+  var evSel = null;
+  if (evs.length > 1) {
+    evSel = el("select", { "aria-label": "Which event of " + name }, [el("option", { value: "", text: "Choose which event" })].concat(evs.map(function (e) { return el("option", { value: e.event, text: e.event }); })));
+    evSel.value = ui.ev[name] || "";
+    evSel.addEventListener("change", function () { ui.ev[name] = evSel.value; ui.msg[name] = null; renderChannels(); });
+  }
+  var need = function () { if (!chosen) { ui.msg[name] = { t: "Choose which event first.", ok: false }; renderChannels(); return false; } return true; };
+  var fileIn = el("input", { type: "file", accept: okExts().map(function (x) { return "." + x; }).join(",") + "," + okExts().map(function (x) { return MIMES[x]; }).join(","), hidden: "", "aria-label": "Choose an audio file for " + name });
+  fileIn.addEventListener("change", function () { var f = fileIn.files && fileIn.files[0]; fileIn.value = ""; replaceFile(name, chosen, f); });
+  var rep = el("button", { type: "button", text: "Replace…", "data-needs": "assets", title: "Choose a " + extWords() + " file, up to 5 MB",
+    on: { click: function () { if (need()) fileIn.click(); } } });
+  var sel = el("select", { "aria-label": "Style for " + name }, [el("option", { value: "", text: styles.length ? "Style..." : "No styles yet" })].concat(styles.map(function (s) { return el("option", { value: s.id, text: s.id + (s.label ? ": " + s.label : "") }); })));
+  sel.value = ui.style[name] || "";
+  var pv = el("button", { type: "button", text: "Preview", on: { click: function () { if (sel.value) previewStyle(sel.value); } } });
+  var use = el("button", { type: "button", cls: "primary", text: "Use", "data-needs": "db", on: { click: function () { if (sel.value && need()) request2({ type: "sound_generate", event: chosen, style: sel.value }); } } });
+  var sync = function () { ui.style[name] = sel.value; pv.disabled = !sel.value; use.disabled = !sel.value || busy || !live; };
+  sel.addEventListener("change", sync); sync();
+  var reset = el("button", { type: "button", cls: "danger", text: "Reset to default", "data-needs": "db", on: { click: function () { if (need()) request2({ type: "sound_reset", event: chosen }); } } });
+  if (chosen) { var cur = evs.filter(function (e) { return e.event === chosen; })[0]; if (cur && cur.source === "default") { reset.disabled = true; reset.title = "Already the default"; } }
+  if (!live || busy) { rep.disabled = true; reset.disabled = true; use.disabled = true; }
+  if (!styles.length) { sel.disabled = true; pv.disabled = true; use.disabled = true; }
+  var m = ui.msg[name];
+  var d = el("details", { cls: "tune" }, [
+    el("summary", { text: busy ? "Change this sound (requested, applied at the next check)" : "Change this sound" }),
+    el("div", { cls: "panel" }, [
+      !state.sounds ? el("div", { cls: "msg", text: "Available after the first sync." }) : null,
+      evSel ? el("div", { cls: "tools" }, [el("span", { cls: "tl", text: "Event" }), evSel]) : null,
+      el("div", { cls: "tools" }, [el("span", { cls: "tl", text: "Your file" }), rep, fileIn, el("span", { cls: "note", text: extWords() + ", up to 5 MB" })]),
+      el("div", { cls: "tools" }, [el("span", { cls: "tl", text: "Generate" }), sel, pv, use]),
+      el("div", { cls: "tools" }, [el("span", { cls: "tl", text: "Default" }), reset]),
+      wait && !wait.busy ? el("div", { cls: "msg", text: wait.t }) : null,
+      m ? el("div", { cls: "msg" + (m.ok ? " ok" : ""), role: "alert", text: m.t }) : null])]);
+  if (ui.open[name]) d.open = true;
+  d.addEventListener("toggle", function () { ui.open[name] = d.open; });
+  return d;
+}
+
+/* what this view can do, said once, in one line */
+function renderCaps() {
+  var c = $("caps"), t = "";
+  if (!state.db) t = state.assets ? "No database here: this page is read-only, so nothing can be requested." : "No database and no uploads here: this page is read-only, so nothing can be requested.";
+  else if (state.canWrite === false) t = "You can look at this board but not change it, so every control that makes a request is off.";
+  else if (!state.assets) t = "Uploads are not available here, so Replace is off. Everything else works.";
+  c.textContent = t; c.hidden = !t;
+  var fr = $("firstrun"); fr.hidden = !(state.booted && state.db && !state.roster && !state.usage && !state.sounds);
+}
+/* a control that needs a capability this view lacks stays off, and says why */
+function noDb() { return !state.db || state.canWrite === false; }
+function gate() {
+  var noDb = !state.db || state.canWrite === false;
+  ["qcd-set", "regen"].forEach(function (id) { $(id).disabled = noDb; });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-needs]"), function (b) {
+    var need = b.getAttribute("data-needs");
+    if ((need === "db" && noDb) || (need === "assets" && (!state.assets || noDb))) {
+      b.disabled = true;
+      if (!b.getAttribute("data-why")) b.setAttribute("data-why", b.title || "");
+      b.title = need === "db" || noDb ? "Needs the board's database and permission to change it, which this view does not have." : "Needs the upload capability, which this view does not have.";
+    }
+  });
+}
+function ensureHomes() {
+  var sel = $("sess-home"), have = {}; Array.prototype.forEach.call(sel.options, function (o) { have[o.value || o.textContent] = 1; });
+  ((state.roster && state.roster.sessions) || []).forEach(function (s) { if (s.home && !have[s.home]) { have[s.home] = 1; sel.appendChild(el("option", { text: s.home })); } });
+}
+
+var audio = null;
+function playFrom(src) {
+  try { if (audio) { audio.pause(); } audio = new Audio(src); audio.play().catch(function () { say("That clip is not on the page yet: it arrives with the next roster read."); }); } catch (e) {}
+}
+/* the page ships no audio. The play button previews the event's generated tone from the recipe in state/sounds; a sound that is a file on the PC cannot be played here. */
+function previewEvent(name) {
+  var e = eventsFor(name)[0], id = e && e.style;
+  if (!e) { say("Nothing is known about this sound yet: it appears after the first sync."); return; }
+  if (!id) { say("This sound is a file on your PC. The page can only preview generated tones."); return; }
+  previewStyle(id);
+}
+function playClip(file) { playFrom("voices/" + file); }
+
+function renderChannels() {
+  var host = $("groups"); host.textContent = "";
+  var sil = silencedSet();
+  CATALOG.forEach(function (g) {
+    var strips = el("div", { cls: "strips" });
+    g.items.forEach(function (it) {
+      var name = it[0], off = !!sil[name];
+      var pS = pending("silence", name).length, pU = pending("unsilence", name).length;
+      var chip = pS ? el("span", { cls: "chip pending", text: "mute pending" }) : pU ? el("span", { cls: "chip pending", text: "unmute pending" })
+        : off ? el("span", { cls: "chip off", text: "silenced" }) : el("span", { cls: "chip ok", text: "live" });
+      var mute = el("button", { type: "button", cls: "mute" + (off ? " on" : ""), "aria-pressed": off ? "true" : "false",
+        title: off ? "Queue: let " + name + " play again" : "Queue: silence " + name, text: "M", "data-needs": "db",
+        on: { click: function () { request(off ? "unsilence" : "silence", name, ""); } } });
+      if (pS || pU) mute.disabled = true;
+      var since = off && sil[name].since ? el("div", { cls: "note", text: "Silenced " + sil[name].since + (sil[name].note ? ". " + sil[name].note : "") }) : null;
+      strips.appendChild(el("div", { cls: "strip" + (off ? " silenced" : "") }, [
+        el("div", { cls: "head" }, [el("span", { cls: "name", text: name }), el("span", { cls: "led", "aria-hidden": "true" })]),
+        el("div", { cls: "mono muted", text: it[1] }),
+        el("div", {}, [el("p", { cls: "when", text: it[2] }), since]),
+        el("div", { cls: "ctrl" }, [mute, el("button", { type: "button", title: "Preview the generated tone for " + name + " here", "aria-label": "Preview " + name, text: "▶", on: { click: function () { previewEvent(name); } } }), chip]),
+        sourceLine(name), tunePanel(name)
+      ]));
+    });
+    host.appendChild(el("div", { cls: "group" }, [el("div", { cls: "label", text: g.group }), strips]));
+  });
+  var known = {}; CATALOG.forEach(function (g) { g.items.forEach(function (it) { known[it[0]] = 1; }); });
+  var extra = soundEvents().filter(function (e) { return !known[e.name]; });
+  if (extra.length) {          /* events chime reports that this page has no description for */
+    var xs = el("div", { cls: "strips" });
+    var seen = {};
+    extra.forEach(function (e) {
+      if (seen[e.name]) return; seen[e.name] = 1;
+      xs.appendChild(el("div", { cls: "strip" }, [
+        el("div", { cls: "head" }, [el("span", { cls: "name", text: e.name }), el("span", { cls: "led", "aria-hidden": "true" })]),
+        el("div", { cls: "mono muted", text: baseName(e.file) }),
+        el("div", {}, [el("p", { cls: "when", text: e.label || "An event chime reports that this page has no description for." })]),
+        sourceLine(e.name), tunePanel(e.name)]));
+    });
+    host.appendChild(el("div", { cls: "group" }, [el("div", { cls: "label", text: "Other events" }), xs]));
+  }
+  var cd = state.roster ? state.roster.questions_cooldown_min : 120;
+  $("qcd-now").textContent = "now " + cd + " min" + (pending("questions_cooldown").length ? ", change pending" : "");
+  if (!$("qcd").value) $("qcd").value = cd;
+}
+
+function renderClock() {
+  var p = (state.roster && state.roster.presence) || { state: "in" };
+  var out = p.state === "out";
+  $("lamp").className = "lamp " + (out ? "out" : "in");
+  $("lamp-word").textContent = out ? "OUT" : "IN";
+  $("lamp-since").textContent = p.since ? "since " + p.since.slice(11) : "clock";
+  var pc = pending("clock");
+  var last = pc[0];
+  $("clock-pending").textContent = last ? "Clock " + last.target + " is queued. It takes effect at the next tick or push." :
+    (p.since ? (out ? "Out" : "In") + " since " + p.since + (p.note ? ". " + p.note : "") : "No clock recorded yet: sessions treat you as in.");
+  $("clock-out").disabled = !!last || out || noDb(); $("clock-in").disabled = !!last || !out || noDb();
+}
+
+function renderAliases() {
+  var r = state.roster;
+  var dh = $("desktops"); dh.textContent = "";
+  (r && r.desktops || []).forEach(function (d) {
+    var inp = el("input", { type: "text", placeholder: "New name", "aria-label": "New name for desktop " + d.n });
+    dh.appendChild(el("div", { cls: "dt" }, [el("div", { cls: "n", text: "Desktop " + d.n }), el("div", { cls: "nm", text: d.name }),
+      el("div", { cls: "row" }, [inp, el("button", { type: "button", text: "Rename", "data-needs": "db", on: { click: function () {
+        if (!inp.value.trim()) { say("Type the new name first."); return; } request("desktop_rename", d.n, inp.value.trim()); inp.value = ""; } } })])]));
+  });
+  if (!dh.children.length) dh.appendChild(el("div", { cls: "empty", text: "Desktop names appear after the first roster read." }));
+  var q = $("sess-q").value.trim().toLowerCase(), home = $("sess-home").value;
+  var rows = (r && r.sessions || []).filter(function (s) {
+    return (!home || s.home === home) && (!q || (s.title + " " + s.voice + " " + s.words).toLowerCase().indexOf(q) >= 0);
+  });
+  $("sess-count").textContent = r ? rows.length + " of " + r.sessions.length : "";
+  var shown = state.showAll || q || home ? rows : rows.slice(0, 40);
+  $("sess-more").hidden = shown.length >= rows.length;
+  $("sess-cols").textContent = ui.sessCols ? "Hide extra columns" : "Show hidden columns"; $("sess-box").className = "tablebox" + (ui.sessCols ? " cols-open" : "");
+  $("sess-cols").hidden = !(r && r.sessions && r.sessions.length);
+  var tb = $("sess-body"); tb.textContent = "";
+  shown.forEach(function (s) {
+    var words = el("input", { type: "text", placeholder: "Words to say", "aria-label": "Spoken words for " + s.title, style: "width:130px" });
+    var pv = pending("voice_new", s.title).length, pn = pending("name_reset", s.title).length + pending("name_set", s.title).length;
+    tb.appendChild(el("tr", {}, [
+      el("td", { cls: "mono tt", text: s.title, title: s.title }), el("td", { cls: "p2", "data-l": "Home", text: s.home || "" }), el("td", { cls: "num mono p3", "data-l": "Last active", text: s.last || "older" }),
+      el("td", { cls: "p1", "data-l": "Voice" }, [el("div", { cls: "acts", style: "align-items:center" }, [
+        s.clip ? el("button", { type: "button", title: "Play " + s.title + " in its current voice", "aria-label": "Play the voice of " + s.title,
+          text: "▶", on: { click: function () { playClip(s.clip); } } }) : null,
+        el("span", { cls: "mono", text: s.voice ? s.voice.replace(/Neural$/, "") : "not yet" })])]),
+      el("td", { cls: "p2 sp", "data-l": "Spoken as", title: s.words || "" }, [document.createTextNode(s.words || ""), s.own_words ? el("span", { cls: "chip", style: "margin-left:6px", text: "own" }) : null]),
+      el("td", {}, [el("div", { cls: "acts" }, [
+        el("button", { type: "button", text: pv ? "voice pending" : "New voice", "data-needs": "db", disabled: pv ? "" : null, on: { click: function () { request("voice_new", s.title, ""); } } }),
+        el("button", { type: "button", text: pn ? "name pending" : "Reset name", "data-needs": "db", disabled: pn ? "" : null, on: { click: function () { request("name_reset", s.title, ""); } } }),
+        words, el("button", { type: "button", text: "Set", "data-needs": "db", on: { click: function () {
+          if (!words.value.trim()) { say("Type the words first."); return; } request("name_set", s.title, words.value.trim()); words.value = ""; } } })])])
+    ]));
+  });
+  if (!shown.length) tb.appendChild(el("tr", {}, [el("td", { colspan: "6", cls: "empty", text: r ? "No session matches that filter." : "Sessions appear after the first roster read." })]));
+}
+
+var KIND = { silence: "Silence", unsilence: "Unsilence", clock: "Clock", voice_new: "New voice", name_reset: "Reset name", name_set: "Set words",
+  questions_cooldown: "Questions cooldown", desktop_rename: "Rename desktop", roster: "Regenerate roster" };
+function reqLabel(r) {
+  if (r.kind) return (KIND[r.kind] || r.kind) + (r.target ? ": " + r.target : "");
+  if (r.type === "usage_mute") return (r.on ? "Mute usage alarm" : "Unmute usage alarm") + ": " + r.account;
+  if (r.type === "sound_replace") return "Replace sound: " + r.event + " with " + (r.filename || "a file");
+  if (r.type === "sound_generate") return "Generate sound: " + r.event + (r.style ? " (" + r.style + ")" : "");
+  if (r.type === "sound_reset") return "Reset to default: " + r.event;
+  return r.type || "request";
+}
+function renderLog() {
+  var ul = $("log"); ul.textContent = "";
+  state.reqs.slice(0, 40).forEach(function (r) {
+    var cls = r.status === "pending" ? "pending" : r.status === "failed" ? "off" : r.status === "manual" ? "pending" : "ok";
+    ul.appendChild(el("li", {}, [el("span", { cls: "chip " + cls, text: r.status }), " ",
+      el("span", { cls: "mono", text: reqTime(r).replace("T", " ").slice(0, 16) }), " ",
+      el("b", { text: reqLabel(r) }),
+      r.note ? el("span", { cls: "muted", text: " (" + r.note + ")" }) : null,
+      r.result ? el("div", { cls: "note", text: r.result }) : null]));
+  });
+  if (!ul.children.length) ul.appendChild(el("li", { cls: "muted", text: "No requests yet. Press M on a channel, or clock out, to make the first." }));
+}
+
+function renderSync() {
+  var r = state.roster, np = state.reqs.filter(function (x) { return x.status === "pending"; }).length;
+  $("sync-line").textContent = (r ? "Roster read " + r.updated : "No roster read yet") + (np ? " · " + np + " pending" : " · nothing pending");
+}
+function renderAll() { renderSync(); renderClock(); renderUsage(); renderChannels(); renderAliases(); ensureHomes(); renderLog(); renderCaps(); gate(); }
+
+$("clock-out").addEventListener("click", function () { request("clock", "out", $("clock-note").value.trim()); $("clock-note").value = ""; });
+$("clock-in").addEventListener("click", function () { request("clock", "in", $("clock-note").value.trim()); $("clock-note").value = ""; });
+$("qcd-set").addEventListener("click", function () { var m = parseInt($("qcd").value, 10); if (isNaN(m) || m < 0) { say("Give the cooldown in minutes."); return; } request("questions_cooldown", m, ""); });
+$("regen").addEventListener("click", function () { request("roster", "", ""); });
+$("sess-q").addEventListener("input", renderAliases);
+$("sess-home").addEventListener("change", renderAliases);
+$("sess-more").addEventListener("click", function () { state.showAll = true; renderAliases(); });
+$("sess-cols").addEventListener("click", function () { ui.sessCols = !ui.sessCols; renderAliases(); });
+$("push").addEventListener("click", function () {
+  if (state.comments && state.comments.openComposer) {
+    try { state.comments.openComposer({ element: $("push-row") }); say("Write 'apply' and send it to Claude. The session that owns this page wakes and applies every pending request."); return; } catch (e) {}
+  }
+  say("Comments are not available here. Use the page's comment button and send a note to Claude.");
+});
+
+renderAll();
+
+/* every capability is optional: use() may be missing, may throw, or may resolve null */
+async function cap(name) { try { return (window.claude && window.claude.use) ? await window.claude.use(name) : null; } catch (e) { return null; } }
+(async function boot() {
+  var db = await cap("db");
+  state.assets = await cap("assets");
+  state.user = await cap("user");
+  if (state.user) {
+    try { state.userId = (await state.user.id()) || ""; } catch (e) { state.userId = ""; }
+    try { state.canWrite = await state.user.can("data.write"); } catch (e) { state.canWrite = null; }     /* null = the platform said nothing: keep the controls */
+  }
+  if (db) {
+    state.db = db;
+    try {
+      db.doc("state/roster").onSnapshot(function (s) { state.roster = s.exists ? s.data() : null; renderAll(); }, function () {});
+      db.doc("state/usage").onSnapshot(function (s) { state.usage = s.exists ? s.data() : null; renderAll(); }, function () {});
+      db.doc("state/sounds").onSnapshot(function (s) { state.sounds = s.exists ? s.data() : null; renderAll(); }, function () {});
+      var rows = function (q) { return q.docs.map(function (d) { var x = d.data() || {}; x.id = d.id; return x; }); };
+      db.collection("requests").orderBy("created", "desc").limit(80).onSnapshot(function (q) { state.reqA = rows(q); mergeReqs(); renderAll(); }, function () {});
+      /* the newer request documents carry `at`, not `created`: a second window on the same collection, merged by id */
+      db.collection("requests").orderBy("at", "desc").limit(80).onSnapshot(function (q) { state.reqB = rows(q).filter(function (r) { return r.at; }); mergeReqs(); renderAll(); }, function () {});
+    } catch (e) {}
+  } else {
+    $("sync-line").textContent = "Read-only view: sign in with edit access to queue requests.";
+  }
+  try { state.comments = await cap("comments"); } catch (e) {}
+  if (!state.comments) $("push-row").hidden = true;
+  state.booted = true; renderAll();
+})();
+</script>
+
+</body></html>

@@ -8,6 +8,7 @@ A skill here is a folder with a `SKILL.md` that an agent reads on demand, plus w
 |---|---|
 | `parley` | One published page per agent session for its correspondence with the person running it: open questions as cards, answered in a box on the card, by a click or by comment. |
 | `reprompt` | Timed loops in which a Claude Code session prompts itself again between your prompts: keep the prompt cache warm, or keep checking its own work while you are away. |
+| `chime` | Audible alerts and toasts for Claude Code sessions: each kind of moment has its own sound and a toast names the session, so you can tell from across the room which one needs you. Ships no audio: every sound is a tone the skill generates itself, and a Soundboard page lets you replace, generate or reset each one. An optional script fetches third-party clips for your own use, from addresses you supply. |
 | `ramgovern` | A Working Set Governor for Windows machines running many Claude Code sessions. |
 | `familycfo` | A household money ledger in one web page. |
 
@@ -20,3 +21,5 @@ Everything in this repository is released under the Apache License 2.0 (see `LIC
 ## Contributing
 
 See `CONTRIBUTING.md`. Issues and pull requests are welcome; the bar is that a change keeps working for an agent reading it cold.
+
+Skills here are replaced whole when you update them, so keep your own settings, sound files and notes outside the skill folder: in `~/.threadops/<skill>` (or the folder named by `<SKILL>_HOME`), and a household's own rules in a small private skill named `<skill>-house`. If you or your agent make a significant improvement to a skill, we would like to see it as a pull request from a fork; every pull request is reviewed and tested before any merge, and none is merged automatically. See `CONTRIBUTING.md`.
