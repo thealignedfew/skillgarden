@@ -1,0 +1,16 @@
+{
+  "_comment": "Copy this file to ~/.threadops/headroom/config.json (or to config.json in the folder named by HEADROOM_HOME) and edit the copy. Never edit the skill folder for local settings. The three paths below are the defaults; leave them out and they follow HEADROOM_HOME.",
+  "accounts": [
+    {"label": "work", "color": "#2a78d6", "path": "~/.claude"},
+    {"label": "personal", "color": "#eb6834", "path": "~/.claude-personal"}
+  ],
+  "output_dir": "~/.threadops/headroom/out",
+  "history_dir": "~/.threadops/headroom/history",
+  "rates_file": "~/.threadops/headroom/rates.json",
+  "timezone": "America/New_York",
+  "days": 45,
+  "scan_days": 60,
+  "live_meters": true,
+  "live_reuse_seconds": 300,
+  "user_agent": "headroom/1.1.0"
+}

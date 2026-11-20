@@ -11,7 +11,8 @@ Two rule sets:
     example on its line (words such as example, synthetic, fixture, illustration, e.g.).
   * Owner terms, optional: a JSON file of private names, seat names, account names and real figures the owner never
     wants published. They are kept OUT of the skill folder so the public package does not list them. Looked for in this
-    order: --terms, the USAGE_MIRROR_LEAK_TERMS environment variable, ROOT/../_owner_only/leak_terms.json.
+    order: --terms, the HEADROOM_LEAK_TERMS environment variable (the old name USAGE_MIRROR_LEAK_TERMS is still read),
+    ROOT/../_owner_only/leak_terms.json.
     Format: {"terms": [{"name": "label", "pattern": "regex", "flags": "i", "allow": "regex that clears a line"}]}
 
 Run it before every push. A person forking the skill should run it with their own terms file.
@@ -118,7 +119,7 @@ def main(argv=None) -> int:
     ap.add_argument("--terms")
     a = ap.parse_args(argv)
     root = Path(a.root).resolve()
-    tp = a.terms or os.environ.get("USAGE_MIRROR_LEAK_TERMS")
+    tp = a.terms or os.environ.get("HEADROOM_LEAK_TERMS") or os.environ.get("USAGE_MIRROR_LEAK_TERMS")
     tpath = Path(tp) if tp else (root.parent / "_owner_only" / "leak_terms.json")
     try:
         terms, used = load_terms(tpath if tpath.is_file() else None)

@@ -1,7 +1,13 @@
-"""Shared helpers for usage-mirror: config, time zone, rates, small utilities.
+"""Shared helpers for headroom: config, time zone, rates, small utilities.
 
-Everything a person sets lives in a config file OUTSIDE the skill folder, so a skill update never overwrites it.
-Default config path: ~/.config/usage-mirror/config.json. Override with the USAGE_MIRROR_CONFIG environment variable.
+Everything a person sets lives OUTSIDE the skill folder, so a skill update never overwrites it.
+The person's folder (<headroom home>) is ~/.threadops/headroom, or the folder named by the HEADROOM_HOME environment
+variable. The config file is <headroom home>/config.json; the rates file, the history and the built page default to the
+same folder unless the config names other places.
+
+Old names (headroom was called usage-mirror up to 1.0.0) are read as aliases, only when <headroom home>/config.json is
+absent: the USAGE_MIRROR_CONFIG environment variable, then ~/.config/usage-mirror/config.json. A one-line notice on
+stderr then suggests moving the file.
 Standard library only.
 """
 from __future__ import annotations
@@ -12,23 +18,37 @@ import os
 import sys
 from pathlib import Path
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
+NAME = "headroom"
 
-DEFAULT_CONFIG = Path.home() / ".config" / "usage-mirror" / "config.json"
-DATA_ROOT = Path.home() / ".local" / "share" / "usage-mirror"
+LEGACY_CONFIG = Path.home() / ".config" / "usage-mirror" / "config.json"
+LEGACY_CONFIG_ENV = "USAGE_MIRROR_CONFIG"
 
-DEFAULTS = {
-    "accounts": [],
-    "output_dir": str(DATA_ROOT / "out"),
-    "history_dir": str(DATA_ROOT / "history"),
-    "rates_file": str(Path.home() / ".config" / "usage-mirror" / "rates.json"),
-    "timezone": "UTC",
-    "days": 45,
-    "scan_days": 60,
-    "live_meters": True,
-    "live_reuse_seconds": 300,
-    "user_agent": "usage-mirror/1.0.0",
-}
+
+def headroom_home() -> Path:
+    """The person's folder for this skill: HEADROOM_HOME when set, else ~/.threadops/headroom."""
+    env = os.environ.get("HEADROOM_HOME")
+    return Path(env).expanduser() if env else Path.home() / ".threadops" / "headroom"
+
+
+def defaults() -> dict:
+    """Default settings. The paths follow headroom_home(), so they are computed at call time."""
+    h = headroom_home()
+    return {
+        "accounts": [],
+        "output_dir": str(h / "out"),
+        "history_dir": str(h / "history"),
+        "rates_file": str(h / "rates.json"),
+        "timezone": "UTC",
+        "days": 45,
+        "scan_days": 60,
+        "live_meters": True,
+        "live_reuse_seconds": 300,
+        "user_agent": f"{NAME}/{VERSION}",
+    }
+
+
+DEFAULTS = defaults()  # a snapshot at import; code that must follow HEADROOM_HOME calls defaults()
 
 PALETTE = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#6250d6", "#e34948", "#008300"]
 
@@ -38,8 +58,28 @@ class ConfigError(Exception):
 
 
 def config_path() -> Path:
-    env = os.environ.get("USAGE_MIRROR_CONFIG")
-    return Path(env).expanduser() if env else DEFAULT_CONFIG
+    """The config file to read. The new place wins whenever it holds a file; the old usage-mirror places are aliases,
+    read only when the new file is absent. With no file anywhere, the new place is returned."""
+    new = headroom_home() / "config.json"
+    if new.is_file():
+        return new
+    env = os.environ.get(LEGACY_CONFIG_ENV)
+    if env and Path(env).expanduser().is_file():
+        return Path(env).expanduser()
+    if LEGACY_CONFIG.is_file():
+        return LEGACY_CONFIG
+    return new
+
+
+def legacy_notice(p: Path) -> str:
+    """One line for stderr when the config came from an old usage-mirror place, else an empty string."""
+    new = headroom_home() / "config.json"
+    env = os.environ.get(LEGACY_CONFIG_ENV)
+    old = {LEGACY_CONFIG.resolve()} | ({Path(env).expanduser().resolve()} if env else set())
+    if Path(p).resolve() in old and Path(p).resolve() != new.resolve():
+        return (f"notice: reading the old usage-mirror config at {p}; headroom now reads {new}. "
+                f"Move the file there (and unset {LEGACY_CONFIG_ENV}) to silence this notice.")
+    return ""
 
 
 def _expand(p: str) -> Path:
@@ -59,13 +99,17 @@ def load_config(path: Path | str | None = None, require_accounts: bool = True) -
     """Read the config file, fill defaults, expand paths. With no file, a single detected default account is used
     so a first run still works; with require_accounts and nothing found it raises ConfigError."""
     p = Path(path).expanduser() if path else config_path()
+    if not path:
+        note = legacy_notice(p)
+        if note:
+            print(note, file=sys.stderr, flush=True)
     raw: dict = {}
     if p.is_file():
         try:
             raw = json.loads(p.read_text(encoding="utf-8"))
         except json.JSONDecodeError as e:
             raise ConfigError(f"config is not valid JSON: {p} ({e})")
-    cfg = {**DEFAULTS, **{k: v for k, v in raw.items() if not k.startswith("_")}}
+    cfg = {**defaults(), **{k: v for k, v in raw.items() if not k.startswith("_")}}
     accts = cfg.get("accounts") or []
     if not accts:
         homes = detect_homes()
@@ -82,7 +126,7 @@ def load_config(path: Path | str | None = None, require_accounts: bool = True) -
         out.append({"label": label, "color": a.get("color") or PALETTE[i % len(PALETTE)], "path": _expand(a["path"])})
     if require_accounts and not out:
         raise ConfigError("no accounts configured and no Claude Code home found; copy config.example.json to "
-                          f"{DEFAULT_CONFIG} and edit it")
+                          f"{headroom_home() / 'config.json'} and edit it")
     cfg["accounts"] = out
     for k in ("output_dir", "history_dir", "rates_file"):
         cfg[k] = _expand(cfg[k])

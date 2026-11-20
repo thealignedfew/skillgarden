@@ -1,6 +1,6 @@
-# Usage Mirror: how it works, what it cannot see, what is open
+# Headroom: how it works, what it cannot see, what is open
 
-Version 1.0.0. This document is written for an agent that has no context. Read it once, top to bottom, before you deploy the skill or answer a question about it. Section 12 is a list of things worth telling the user.
+Version 1.1.0. Headroom was called usage-mirror up to 1.0.0. This document is written for an agent that has no context. Read it once, top to bottom, before you deploy the skill or answer a question about it. Section 12 is a list of things worth telling the user.
 
 ## 1. The problem
 
@@ -39,7 +39,7 @@ account homes (read only)             usage endpoint (read only, optional)
                          |
    outliers.py --> history_dir/insights.json
                          |
-                    build_page.py  ---->  output_dir/usage_mirror.html
+                    build_page.py  ---->  output_dir/headroom.html
 ```
 
 | File | Job |
@@ -64,7 +64,7 @@ Nothing is written inside the skill folder and nothing is written into an accoun
 | Usage endpoint | an Anthropic OAuth usage URL, called with the account's own sign-in | the plan meters: 5-hour and weekly windows with percent used and reset time, per-model weekly windows, the `limits` array, and, on accounts that have it, extra usage | history (it is a snapshot), any per-session breakdown, anything for an account whose sign-in cannot be read (section 8) |
 | Saved meter copy | the `cachedUsageUtilization` key in an account's `.claude.json` | an older copy of the same meters, used only if the live read fails | freshness: the CLI stopped refreshing it around November 2026, so treat it as old |
 | Rates file | `rates_file` in the config | per-model list prices | correctness over time: it is a dated copy of public prices; the user must check it |
-| Config file | `~/.config/usage-mirror/config.json` | account labels, colours, paths, time zone, folders | nothing else; it holds no secrets |
+| Config file | `~/.threadops/headroom/config.json`, or `config.json` in the folder named by `HEADROOM_HOME` (old aliases: `USAGE_MIRROR_CONFIG`, `~/.config/usage-mirror/config.json`) | account labels, colours, paths, time zone, folders | nothing else; it holds no secrets |
 
 The endpoint facts (URL, request headers, field names) were taken from the community tool `jens-duttke/usage-monitor-for-claude`, which documents them. They were not guessed. The endpoint is undocumented by Anthropic and may change without notice.
 
@@ -154,7 +154,7 @@ Each run is `{at, window_from, window_to, items: [{title, detail}]}` in `insight
 1. **`limits[]` item shape.** Only partly known. Ask the first user whose account returns it to share the key names (never the values) so the reader can be made exact.
 2. **Extra usage units.** The minor-unit reading is from one observation. Verify with an account that has the feature.
 3. **macOS sign-in.** Reading from the keychain is not implemented.
-4. **User agent.** The reader identifies itself honestly as `usage-mirror/<version>`. The community reference tool sends a Claude Code style user agent; whether the endpoint treats a plain tool name differently is untested. If reads fail with HTTP 403, that is the first thing to look at. It can be changed with `user_agent` in your own config.
+4. **User agent.** The reader identifies itself honestly as `headroom/<version>`. The community reference tool sends a Claude Code style user agent; whether the endpoint treats a plain tool name differently is untested. If reads fail with HTTP 403, that is the first thing to look at. It can be changed with `user_agent` in your own config.
 5. **Other collectors.** The private original also read Codex session logs, the desktop app's agent-mode sessions, and OpenHands job ledgers. They are not shipped. The Codex reader depends on its log format and an optional compression library and was mapped to one person's account folders. The desktop reader reads folders that can hold other people's sessions and depends on app-internal layout. The OpenHands reader depends on a private ledger format. A clean, optional, off-by-default Codex collector is the most useful addition.
 6. **Plan name.** The page does not show which plan an account is on; the endpoint payload used here does not say.
 7. **Several logins, one machine.** Two homes signed in to the same login are two accounts to this tool. A shared meter would be read twice.
@@ -178,9 +178,9 @@ Offer each once, when it fits, and accept a no.
 
 ## 13. Extending, and where changes belong
 
-- Local choices go in the config file, the rates file, or your own notes. Never in the skill folder: an update replaces it.
+- Local choices go in the headroom home (`~/.threadops/headroom`, or `HEADROOM_HOME`): the config file, the rates file, or your own notes. Never in the skill folder: an update replaces it. A household's own rules for the skill go in a small private skill named `headroom-house`.
 - Your own automation (an alarm, a publish step, a timer) goes in your own scripts and calls this skill's scripts.
-- A real improvement to the skill goes upstream as a pull request from a fork of `github.com/thealignedfew/skillgarden`. Run the tests and the leak scan first, add a `CHANGELOG.md` entry, and keep the version in `SKILL.md`, `scripts/common.py` and the changelog together.
+- A real improvement to the skill goes upstream as a pull request from a fork of `github.com/thealignedfew/skillgarden`. Run the tests and the leak scan first, add a `CHANGELOG.md` entry, and keep the version in `SKILL.md`, `scripts/common.py`, `config.example.json` and the changelog together.
 
 ## 14. Credits
 

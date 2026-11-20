@@ -100,7 +100,7 @@ def make(out: Path, now: dt.datetime) -> dict:
                         {"label": "acct-b", "color": "#eb6834", "path": str(hb)}],
            "output_dir": str(out / "out"), "history_dir": str(out / "history"), "rates_file": str(rates),
            "timezone": "UTC", "days": 45, "scan_days": 60, "live_meters": False, "live_reuse_seconds": 0,
-           "user_agent": "usage-mirror-test"}
+           "user_agent": "headroom-test"}
     (out / "config.json").write_text(json.dumps(cfg, indent=1), encoding="utf-8")
     return cfg
 

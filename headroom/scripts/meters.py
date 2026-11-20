@@ -1,4 +1,4 @@
-"""Plan meters for usage-mirror: read each account's usage meter, keep every reading, forecast the run-out.
+"""Plan meters for headroom: read each account's usage meter, keep every reading, forecast the run-out.
 
 Source of the live reading: the account usage endpoint that Claude Code's own sign-in is allowed to call,
     GET https://api.anthropic.com/api/oauth/usage

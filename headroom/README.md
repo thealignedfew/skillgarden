@@ -1,6 +1,8 @@
-# usage-mirror
+# headroom
 
-A Claude Code skill that mirrors your Claude usage, across one or more local account homes, into one self-contained HTML page. Per-session tokens and API-equivalent cost from your local transcripts, live plan meters from the account usage endpoint, a run-out forecast, a daily history, and a short review of what stood out in the last 12 hours.
+**Moving from usage-mirror?** This skill was called usage-mirror up to 1.0.0 and is now headroom. If you cloned or copied the old `usage-mirror` folder, install `headroom` in its place and remove the old folder. Your settings move to `~/.threadops/headroom/config.json`; until you move them, the old config (`USAGE_MIRROR_CONFIG` or `~/.config/usage-mirror/config.json`) is still read as an alias, with a one-line notice. See `CHANGELOG.md`.
+
+A Claude Code skill that shows how much headroom is left in your Claude usage. It mirrors your usage, across one or more local account homes, into one self-contained HTML page. Per-session tokens and API-equivalent cost from your local transcripts, live plan meters from the account usage endpoint, a run-out forecast, a daily history, and a short review of what stood out in the last 12 hours.
 
 It is for people who run Claude Code a lot, sometimes under more than one account, and want one place to see where the usage went and how close they are to the limits.
 
@@ -26,25 +28,25 @@ It is for people who run Claude Code a lot, sometimes under more than one accoun
 1. Copy the skill folder into your Claude Code skills directory:
 
    ```
-   cp -r usage-mirror ~/.claude/skills/usage-mirror
+   cp -r headroom ~/.claude/skills/headroom
    ```
 
-   On Windows, copy it to `%USERPROFILE%\.claude\skills\usage-mirror`.
+   On Windows, copy it to `%USERPROFILE%\.claude\skills\headroom`.
 
-2. Ask your agent to set it up ("set up usage-mirror"). It follows `SKILL.md`. Or do it by hand:
+2. Ask your agent to set it up ("set up headroom"). It follows `SKILL.md`. Or do it by hand:
 
    ```
-   python ~/.claude/skills/usage-mirror/scripts/init_config.py --write --timezone America/New_York
-   python ~/.claude/skills/usage-mirror/scripts/refresh.py --no-live
+   python ~/.claude/skills/headroom/scripts/init_config.py --write --timezone America/New_York
+   python ~/.claude/skills/headroom/scripts/refresh.py --no-live
    ```
 
-   Then open `usage_mirror.html` in the output folder it prints. Check `~/.config/usage-mirror/rates.json` against the public pricing page first: the shipped rates are a dated copy and go stale.
+   Then open `headroom.html` in the output folder it prints. Check `~/.threadops/headroom/rates.json` against the public pricing page first: the shipped rates are a dated copy and go stale.
 
 3. When you are happy, run `refresh.py` without `--no-live` to add the plan meters.
 
 ## Settings live outside the skill
 
-The skill folder is replaced when you update it. So everything you set lives elsewhere: your config file (`~/.config/usage-mirror/config.json`, or the path in `USAGE_MIRROR_CONFIG`), your rates file, and your data folders. Do not edit the skill's own files for local tweaks. If you make an improvement worth sharing, propose it as a pull request from a fork.
+The skill folder is replaced when you update it. So everything you set lives elsewhere, in your headroom home: `~/.threadops/headroom`, or the folder named by `HEADROOM_HOME`. It holds your config file (`config.json`), your rates file (`rates.json`) and your data folders (`history/`, `out/`), unless your config names other places. A household's own rules for the skill go in a small private skill named `headroom-house`. Do not edit the skill's own files for local tweaks. If you make an improvement worth sharing, propose it as a pull request from a fork; every pull request is reviewed and tested before any merge, and none is merged automatically. See `CONTRIBUTING.md` in the repository.
 
 ## Worked example
 
@@ -55,7 +57,7 @@ meters acct-a: live 5-hour 81% 7-day 41%
 meters acct-b: none note: no_credentials
 collect {"files_seen": 3, "files_read": 3, "records": 31, "bytes": 9120, "seconds": 0.1}
 data sessions=2 rows=9
-page ~/.local/share/usage-mirror/out/usage_mirror.html bytes=61874
+page ~/.threadops/headroom/out/headroom.html bytes=61874
 ```
 
 ```

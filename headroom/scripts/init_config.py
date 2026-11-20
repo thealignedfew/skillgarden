@@ -1,5 +1,6 @@
 """First-run helper: look for Claude Code account homes, then write a starter config and a rates file OUTSIDE the skill
-folder. It never overwrites an existing file and never reads a credential.
+folder, in <headroom home> (~/.threadops/headroom, or the folder named by HEADROOM_HOME). It never overwrites an existing
+file and never reads a credential.
 
     python init_config.py            show what it would write
     python init_config.py --write    write the config and the rates file, create the data folders
@@ -33,7 +34,18 @@ def main(argv=None) -> int:
     cfg.pop("_comment", None)
     cfg["accounts"] = accts or cfg["accounts"]
     cfg["timezone"] = a.timezone
-    cp, rp = common.config_path(), Path(common.DEFAULTS["rates_file"])
+    dflt = common.defaults()
+
+    def tilde(s: str) -> str:
+        return s.replace(str(Path.home()), "~", 1)
+
+    for k in ("output_dir", "history_dir", "rates_file"):
+        cfg[k] = tilde(dflt[k])
+    cfg["user_agent"] = dflt["user_agent"]
+    cp, rp = common.config_path(), Path(dflt["rates_file"])
+    note = common.legacy_notice(cp)
+    if note:
+        common.say(note)
     common.say(f"account homes found: {len(homes)}" + ("" if homes else " (none; edit the accounts list by hand)"))
     for h in homes:
         common.say(f"  {h}")
@@ -48,7 +60,7 @@ def main(argv=None) -> int:
     rp.parent.mkdir(parents=True, exist_ok=True)
     if not rp.exists():
         shutil.copyfile(SKILL / "rates.example.json", rp)
-    for d in (common.DEFAULTS["output_dir"], common.DEFAULTS["history_dir"]):
+    for d in (dflt["output_dir"], dflt["history_dir"]):
         Path(d).mkdir(parents=True, exist_ok=True)
     common.say("written. Check the rates against the public pricing page before trusting any dollar figure.")
     return 0

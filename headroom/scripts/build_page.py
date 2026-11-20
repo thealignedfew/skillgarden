@@ -63,7 +63,7 @@ def main(argv=None) -> int:
         out_dir = Path(cfg["output_dir"])
         data = Path(a.data) if a.data else out_dir / "usage_data.json"
         ins = Path(a.insights) if a.insights else Path(cfg["history_dir"]) / "insights.json"
-        out = Path(a.out) if a.out else out_dir / "usage_mirror.html"
+        out = Path(a.out) if a.out else out_dir / "headroom.html"
         if not data.is_file():
             common.die(f"data not found: {data}; run collect.py first")
         r = build(Path(a.template), data, ins, out)

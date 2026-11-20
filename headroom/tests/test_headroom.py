@@ -1,4 +1,4 @@
-"""Tests for usage-mirror. Standard library only. Run from the skill folder:
+"""Tests for headroom. Standard library only. Run from the skill folder:
 
     python -m unittest discover -s tests -v
 
@@ -48,7 +48,7 @@ def payload(reset5: dt.datetime, reset7: dt.datetime, five: float = 75, seven: f
 
 class Base(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="um-test-"))
+        self.tmp = Path(tempfile.mkdtemp(prefix="hr-test-"))
         self.cfg_raw = make_fixture.make(self.tmp, NOW)
         self.cfg = common.load_config(self.tmp / "config.json")
 
@@ -61,10 +61,54 @@ class ConfigTests(Base):
         self.assertEqual([a["label"] for a in self.cfg["accounts"]], ["acct-a", "acct-b"])
         self.assertTrue(isinstance(self.cfg["output_dir"], Path))
 
-    def test_env_override_and_defaults(self):
-        with mock.patch.dict(os.environ, {"USAGE_MIRROR_CONFIG": str(self.tmp / "config.json")}):
+    def test_home_env_and_defaults(self):
+        with mock.patch.dict(os.environ, {"HEADROOM_HOME": str(self.tmp)}):
             self.assertEqual(common.config_path(), self.tmp / "config.json")
             self.assertEqual(common.load_config()["days"], 45)
+            d = common.defaults()
+            self.assertEqual(Path(d["output_dir"]), self.tmp / "out")
+            self.assertEqual(Path(d["history_dir"]), self.tmp / "history")
+            self.assertEqual(Path(d["rates_file"]), self.tmp / "rates.json")
+            self.assertEqual(d["user_agent"], "headroom/" + common.VERSION)
+
+    def test_default_home_is_threadops(self):
+        env = {k: v for k, v in os.environ.items() if k != "HEADROOM_HOME"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            self.assertEqual(common.headroom_home(), Path.home() / ".threadops" / "headroom")
+
+    def test_old_config_env_is_an_alias_with_a_notice(self):
+        empty = self.tmp / "empty-home"
+        empty.mkdir()
+        with mock.patch.dict(os.environ, {"HEADROOM_HOME": str(empty), "USAGE_MIRROR_CONFIG": str(self.tmp / "config.json")}), \
+                mock.patch.object(common, "LEGACY_CONFIG", self.tmp / "absent.json"):
+            self.assertEqual(common.config_path(), self.tmp / "config.json")
+            err = io.StringIO()
+            with mock.patch("sys.stderr", err):
+                self.assertEqual(common.load_config()["days"], 45)
+            self.assertIn("old usage-mirror config", err.getvalue())
+            self.assertEqual(len(err.getvalue().splitlines()), 1)
+
+    def test_new_home_wins_over_old_aliases(self):
+        home = self.tmp / "new-home"
+        home.mkdir()
+        shutil.copyfile(self.tmp / "config.json", home / "config.json")
+        with mock.patch.dict(os.environ, {"HEADROOM_HOME": str(home), "USAGE_MIRROR_CONFIG": str(self.tmp / "config.json")}), \
+                mock.patch.object(common, "LEGACY_CONFIG", self.tmp / "config.json"):
+            self.assertEqual(common.config_path(), home / "config.json")
+            err = io.StringIO()
+            with mock.patch("sys.stderr", err):
+                common.load_config()
+            self.assertEqual(err.getvalue(), "")
+
+    def test_old_default_path_is_an_alias(self):
+        empty = self.tmp / "empty-home"
+        empty.mkdir()
+        env = {k: v for k, v in os.environ.items() if k != "USAGE_MIRROR_CONFIG"}
+        env["HEADROOM_HOME"] = str(empty)
+        with mock.patch.dict(os.environ, env, clear=True), mock.patch.object(common, "LEGACY_CONFIG", self.tmp / "config.json"):
+            self.assertEqual(common.config_path(), self.tmp / "config.json")
+            self.assertIn("usage-mirror", common.legacy_notice(common.config_path()))
+            self.assertEqual(common.legacy_notice(empty / "config.json"), "")
 
     def test_duplicate_label_is_refused(self):
         raw = dict(self.cfg_raw)
@@ -253,11 +297,11 @@ class MeterTests(Base):
             return Resp(json.dumps({"five_hour": {"utilization": 12, "resets_at": "2026-11-19T20:00:00+00:00"}}).encode())
 
         with mock.patch("urllib.request.urlopen", fake_urlopen):
-            raw = meters.fetch_raw(home, "usage-mirror-test")
+            raw = meters.fetch_raw(home, "headroom-test")
         self.assertEqual(raw["five_hour"]["utilization"], 12)
         self.assertEqual(seen["auth"], "Bearer " + fake_value)         # sent in the header only
         self.assertNotIn(fake_value, json.dumps(raw))
-        self.assertEqual(seen["ua"], "usage-mirror-test")
+        self.assertEqual(seen["ua"], "headroom-test")
 
         import urllib.error
 
@@ -321,7 +365,7 @@ class PageTests(Base):
         out.mkdir(parents=True, exist_ok=True)
         (out / "usage_data.json").write_text(json.dumps(d), encoding="utf-8")
         outliers.append_run(self.cfg["history_dir"], outliers.compute(self.cfg, 12, now=NOW))
-        page = out / "usage_mirror.html"
+        page = out / "headroom.html"
         build_page.build(SKILL / "scripts" / "page_template.html", out / "usage_data.json",
                          Path(self.cfg["history_dir"]) / "insights.json", page)
         return page
@@ -368,7 +412,7 @@ class PageTests(Base):
 
 class LeakScanTests(unittest.TestCase):
     def test_flags_planted_leaks_and_passes_clean(self):
-        tmp = Path(tempfile.mkdtemp(prefix="um-leak-"))
+        tmp = Path(tempfile.mkdtemp(prefix="hr-leak-"))
         try:
             root = tmp / "pkg"
             root.mkdir()
@@ -416,15 +460,19 @@ class PackageTests(unittest.TestCase):
     def test_version_matches_everywhere(self):
         skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
         fm = re.match(r"---\n([\s\S]*?)\n---", skill).group(1)
-        self.assertRegex(fm, r"(?m)^name: usage-mirror$")
+        self.assertRegex(fm, r"(?m)^name: headroom$")
         v = re.search(r'(?m)^version: "?([0-9.]+)"?$', fm).group(1)
         self.assertEqual(v, common.VERSION)
         self.assertRegex((SKILL / "CHANGELOG.md").read_text(encoding="utf-8"), r"(?m)^## " + re.escape(v) + r"\b")
+        example = json.loads((SKILL / "config.example.json").read_text(encoding="utf-8"))
+        self.assertEqual(example["user_agent"], "headroom/" + v)
 
     def test_skill_has_required_sections(self):
         skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
-        for needle in ("SKILLGARDEN-STANDARD-SECTION", "## The settings rule", "## Contributing upstream", "WHITEPAPER.md"):
+        for needle in ("## Your settings live outside this folder", "## Propose improvements upstream", "~/.threadops/headroom",
+                       "HEADROOM_HOME", "headroom-house", "WHITEPAPER.md"):
             self.assertIn(needle, skill)
+        self.assertNotIn("SKILLGARDEN-STANDARD-SECTION", skill)
 
     def test_no_machine_specific_paths_or_dashes_in_scripts(self):
         for p in (SKILL / "scripts").glob("*"):

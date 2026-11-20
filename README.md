@@ -9,6 +9,7 @@ A skill here is a folder with a `SKILL.md` that an agent reads on demand, plus w
 | `parley` | One published page per agent session for its correspondence with the person running it: open questions as cards, answered in a box on the card, by a click or by comment. |
 | `reprompt` | Timed loops in which a Claude Code session prompts itself again between your prompts: keep the prompt cache warm, or keep checking its own work while you are away. |
 | `chime` | Audible alerts and toasts for Claude Code sessions: each kind of moment has its own sound and a toast names the session, so you can tell from across the room which one needs you. Ships no audio: every sound is a tone the skill generates itself, and a Soundboard page lets you replace, generate or reset each one. An optional script fetches third-party clips for your own use, from addresses you supply. |
+| `headroom` | How much room is left in your Claude usage: one self-contained page with per-session tokens and API-equivalent cost from your local transcripts, live plan meters for one or more accounts, and a run-out forecast. Called `usage-mirror` up to 1.0.0; the old settings place is still read until you move it. |
 | `ramgovern` | A Working Set Governor for Windows machines running many Claude Code sessions. |
 | `familycfo` | A household money ledger in one web page. |
 

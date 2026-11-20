@@ -1,4 +1,4 @@
-"""Collector for usage-mirror: read Claude Code transcripts from one or more account homes, keep one row per model
+"""Collector for headroom: read Claude Code transcripts from one or more account homes, keep one row per model
 response, and write the aggregate the page is built from.
 
 Reads only metadata: timestamps, model, token counts, working-folder name, session id, the session's title records,

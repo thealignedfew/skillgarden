@@ -1,4 +1,4 @@
-"""One refresh of the Usage Mirror: read the plan meters, read new transcript bytes, rebuild the data and the page.
+"""One refresh of Headroom: read the plan meters, read new transcript bytes, rebuild the data and the page.
 
     python refresh.py                  full refresh (meters live if the config says so)
     python refresh.py --no-live        skip the usage endpoint; use stored readings only
@@ -71,10 +71,10 @@ def main(argv=None) -> int:
 
     try:
         r = build_page.build(Path(__file__).resolve().parent / "page_template.html", dp,
-                             Path(cfg["history_dir"]) / "insights.json", out_dir / "usage_mirror.html")
+                             Path(cfg["history_dir"]) / "insights.json", out_dir / "headroom.html")
     except (ValueError, json.JSONDecodeError) as e:
         common.die(str(e))
-    common.say(f"page {out_dir / 'usage_mirror.html'} bytes={r['bytes']}")
+    common.say(f"page {out_dir / 'headroom.html'} bytes={r['bytes']}")
     return 0
 
 
