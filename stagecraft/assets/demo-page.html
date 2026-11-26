@@ -9,7 +9,7 @@
 <body>
 <!-- PB:STYLE -->
 <style>
-/* Stagecraft 0.4.3. Tokens first: one neutral palette called "default", light and dark. Every text color is at least 7:1 on --bg and --surface, every border at least 3:1 (tests/contrast_check.py computes it). The page's own colors use these tokens: --bg --surface --fg --muted --line --accent --accent-soft --ask --ask-soft --ok --warn --warn-soft. */
+/* Stagecraft 0.4.4. Tokens first: one neutral palette called "default", light and dark. Every text color is at least 7:1 on --bg and --surface, every border at least 3:1 (tests/contrast_check.py computes it). The page's own colors use these tokens: --bg --surface --fg --muted --line --accent --accent-soft --ask --ask-soft --ok --warn --warn-soft. */
 :root { --bg: #f3f6fa; --surface: #ffffff; --fg: #14181f; --muted: #444c58; --line: #67727f; --accent: #0f4a80; --accent-soft: #dcebf8; --ask: #951a0a; --ask-soft: #fbe6e3; --ok: #235521; --warn: #6e4300; --warn-soft: #fbefd5; --shade: rgba(10, 14, 20, .45); --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace; color-scheme: light; }
 :root[data-contrast="standard"] { --muted: #5a6573; --accent: #1b62a8; --ask: #b3261a; --ok: #2d6a2a; --warn: #8a5600; }
 :root { --ws-orange: #b34a00; --ws-purple: #7a3fb0; --ws-green: #2c7a2a; --ws-yellow: #8a6a00; --ws-blue: #1e6bb8; --ws-pink: #b83280; }
@@ -20,6 +20,25 @@
 @media (prefers-color-scheme: dark) { :root:not([data-ptheme="light"]):not([data-theme="light"]) { --ws-orange: #ff9a4d; --ws-purple: #c79bff; --ws-green: #7fd67a; --ws-yellow: #e8c547; --ws-blue: #6db8ff; --ws-pink: #ff8fc8; } }
 :root[data-contrast="standard"][data-ptheme="dark"], :root[data-contrast="standard"][data-theme="dark"]:not([data-ptheme="light"]) { --muted: #8794a5; --accent: #6db8ff; --ask: #ff9b6b; --ok: #89d185; --warn: #f0b35e; }
 :root[data-ptheme="dark"], :root[data-theme="dark"]:not([data-ptheme="light"]) { --ws-orange: #ff9a4d; --ws-purple: #c79bff; --ws-green: #7fd67a; --ws-yellow: #e8c547; --ws-blue: #6db8ff; --ws-pink: #ff8fc8; }
+/* 0.4.4: reader.palette "home": the page wears its account home's palette (orange, purple, green, yellow, blue, pink), light and dark, copied from the parley header snippet (sha1 9249e9231410; a colour change there is sent to this skill as one line). Always high contrast, so these rules come after reader.contrast and win over it. --warn and --warn-soft are this skill's own, the same as the neutral palette. tests/contrast_check.py checks all six. */
+:root[data-home="orange"] { --bg: #fbf5ec; --surface: #ffffff; --fg: #2a1d0e; --muted: #57452f; --line: #a65412; --accent: #7a3f0d; --accent-soft: #f8ecdc; --ask: #951a0a; --ask-soft: #fbe6e3; --ok: #365516; --warn: #6e4300; --warn-soft: #fbefd5; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root[data-home="orange"]:not([data-ptheme="light"]):not([data-theme="light"]) { --bg: #221a0f; --surface: #2c2214; --fg: #e3c9a2; --muted: #d2b994; --line: #8f6e42; --accent: #f79a32; --accent-soft: #302210; --ask: #ff9466; --ask-soft: #3b1d0e; --ok: #bdd07a; --warn: #f0b35e; --warn-soft: #3a2a14; --shade: rgba(0, 0, 0, .6); color-scheme: dark; } }
+:root[data-home="orange"][data-ptheme="dark"], :root[data-home="orange"][data-theme="dark"]:not([data-ptheme="light"]) { --bg: #221a0f; --surface: #2c2214; --fg: #e3c9a2; --muted: #d2b994; --line: #8f6e42; --accent: #f79a32; --accent-soft: #302210; --ask: #ff9466; --ask-soft: #3b1d0e; --ok: #bdd07a; --warn: #f0b35e; --warn-soft: #3a2a14; --shade: rgba(0, 0, 0, .6); color-scheme: dark; }
+:root[data-home="green"] { --bg: #f2f8f4; --surface: #ffffff; --fg: #141414; --muted: #454545; --line: #10452b; --accent: #10452b; --accent-soft: #dcefe4; --ask: #951a0a; --ask-soft: #fbe6e3; --ok: #235521; --warn: #6e4300; --warn-soft: #fbefd5; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root[data-home="green"]:not([data-ptheme="light"]):not([data-theme="light"]) { --bg: #000000; --surface: #06140d; --fg: #ffffff; --muted: #c8c8c8; --line: #2c8a58; --accent: #4fd18b; --accent-soft: #0d2e1d; --ask: #f38518; --ask-soft: #221203; --ok: #89d185; --warn: #f0b35e; --warn-soft: #3a2a14; --shade: rgba(0, 0, 0, .6); color-scheme: dark; } }
+:root[data-home="green"][data-ptheme="dark"], :root[data-home="green"][data-theme="dark"]:not([data-ptheme="light"]) { --bg: #000000; --surface: #06140d; --fg: #ffffff; --muted: #c8c8c8; --line: #2c8a58; --accent: #4fd18b; --accent-soft: #0d2e1d; --ask: #f38518; --ask-soft: #221203; --ok: #89d185; --warn: #f0b35e; --warn-soft: #3a2a14; --shade: rgba(0, 0, 0, .6); color-scheme: dark; }
+:root[data-home="purple"] { --bg: #f6f2fa; --surface: #ffffff; --fg: #141414; --muted: #454545; --line: #5b2c83; --accent: #5b2c83; --accent-soft: #ece0f6; --ask: #951a0a; --ask-soft: #fbe6e3; --ok: #235521; --warn: #6e4300; --warn-soft: #fbefd5; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root[data-home="purple"]:not([data-ptheme="light"]):not([data-theme="light"]) { --bg: #000000; --surface: #110a18; --fg: #ffffff; --muted: #c8c8c8; --line: #8457b3; --accent: #c79bf0; --accent-soft: #2a1840; --ask: #f38518; --ask-soft: #221203; --ok: #89d185; --warn: #f0b35e; --warn-soft: #3a2a14; --shade: rgba(0, 0, 0, .6); color-scheme: dark; } }
+:root[data-home="purple"][data-ptheme="dark"], :root[data-home="purple"][data-theme="dark"]:not([data-ptheme="light"]) { --bg: #000000; --surface: #110a18; --fg: #ffffff; --muted: #c8c8c8; --line: #8457b3; --accent: #c79bf0; --accent-soft: #2a1840; --ask: #f38518; --ask-soft: #221203; --ok: #89d185; --warn: #f0b35e; --warn-soft: #3a2a14; --shade: rgba(0, 0, 0, .6); color-scheme: dark; }
+:root[data-home="yellow"] { --bg: #fcf9ec; --surface: #ffffff; --fg: #141414; --muted: #454545; --line: #a8890a; --accent: #5c4803; --accent-soft: #f7edc4; --ask: #951a0a; --ask-soft: #fbe6e3; --ok: #235521; --warn: #6e4300; --warn-soft: #fbefd5; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root[data-home="yellow"]:not([data-ptheme="light"]):not([data-theme="light"]) { --bg: #000000; --surface: #141003; --fg: #ffffff; --muted: #c8c8c8; --line: #b8940b; --accent: #ffd23f; --accent-soft: #2e2605; --ask: #f38518; --ask-soft: #221203; --ok: #89d185; --warn: #f0b35e; --warn-soft: #3a2a14; --shade: rgba(0, 0, 0, .6); color-scheme: dark; } }
+:root[data-home="yellow"][data-ptheme="dark"], :root[data-home="yellow"][data-theme="dark"]:not([data-ptheme="light"]) { --bg: #000000; --surface: #141003; --fg: #ffffff; --muted: #c8c8c8; --line: #b8940b; --accent: #ffd23f; --accent-soft: #2e2605; --ask: #f38518; --ask-soft: #221203; --ok: #89d185; --warn: #f0b35e; --warn-soft: #3a2a14; --shade: rgba(0, 0, 0, .6); color-scheme: dark; }
+:root[data-home="blue"] { --bg: #f1f6fb; --surface: #ffffff; --fg: #141414; --muted: #454545; --line: #145da0; --accent: #0f4a80; --accent-soft: #dcebf8; --ask: #951a0a; --ask-soft: #fbe6e3; --ok: #235521; --warn: #6e4300; --warn-soft: #fbefd5; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root[data-home="blue"]:not([data-ptheme="light"]):not([data-theme="light"]) { --bg: #000000; --surface: #061220; --fg: #ffffff; --muted: #c8c8c8; --line: #3d87d1; --accent: #6db8ff; --accent-soft: #0b2744; --ask: #f38518; --ask-soft: #221203; --ok: #89d185; --warn: #f0b35e; --warn-soft: #3a2a14; --shade: rgba(0, 0, 0, .6); color-scheme: dark; } }
+:root[data-home="blue"][data-ptheme="dark"], :root[data-home="blue"][data-theme="dark"]:not([data-ptheme="light"]) { --bg: #000000; --surface: #061220; --fg: #ffffff; --muted: #c8c8c8; --line: #3d87d1; --accent: #6db8ff; --accent-soft: #0b2744; --ask: #f38518; --ask-soft: #221203; --ok: #89d185; --warn: #f0b35e; --warn-soft: #3a2a14; --shade: rgba(0, 0, 0, .6); color-scheme: dark; }
+:root[data-home="pink"] { --bg: #fdf2f7; --surface: #ffffff; --fg: #141414; --muted: #454545; --line: #b4185a; --accent: #8a1044; --accent-soft: #fbe0ec; --ask: #951a0a; --ask-soft: #fbe6e3; --ok: #235521; --warn: #6e4300; --warn-soft: #fbefd5; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root[data-home="pink"]:not([data-ptheme="light"]):not([data-theme="light"]) { --bg: #000000; --surface: #1a0710; --fg: #ffffff; --muted: #c8c8c8; --line: #d9458a; --accent: #ff8fc0; --accent-soft: #3a0f24; --ask: #f38518; --ask-soft: #221203; --ok: #89d185; --warn: #f0b35e; --warn-soft: #3a2a14; --shade: rgba(0, 0, 0, .6); color-scheme: dark; } }
+:root[data-home="pink"][data-ptheme="dark"], :root[data-home="pink"][data-theme="dark"]:not([data-ptheme="light"]) { --bg: #000000; --surface: #1a0710; --fg: #ffffff; --muted: #c8c8c8; --line: #d9458a; --accent: #ff8fc0; --accent-soft: #3a0f24; --ask: #f38518; --ask-soft: #221203; --ok: #89d185; --warn: #f0b35e; --warn-soft: #3a2a14; --shade: rgba(0, 0, 0, .6); color-scheme: dark; }
 html, body { background: var(--bg); color: var(--fg); }
 body { margin: 0; font: 15px/1.55 var(--body); }
 [hidden] { display: none !important; }
@@ -366,7 +385,7 @@ html[data-pb-density="compact"] .pb-card { padding: 7px 10px; }
 </style>
 <!-- /PB:STYLE -->
 <!-- PB:HEADER -->
-<div id="pb-top" data-playbook="0.4.3">
+<div id="pb-top" data-playbook="0.4.4">
   <div class="ah" id="ah" data-artifact-header="2.10" data-live="grey" role="note" aria-label="Who made this page and whether it is watched">
     <span class="ah-st"><span class="ah-dot" aria-hidden="true"></span><span id="ah-status">Author status unknown</span></span>
     <span id="ah-by">Authored by <b id="ah-seat">unknown author</b> <span class="ah-uuid" id="ah-uuid"></span></span>
@@ -415,7 +434,7 @@ html[data-pb-density="compact"] .pb-card { padding: 7px 10px; }
 
 <h1>Bakery chain weekly review</h1>
 <p class="pb-lead">An invented bakery chain with twelve stores, used to show every part of stagecraft. All names and figures are made up. Press <kbd>o</kbd> for the options, <kbd>/</kbd> to filter, <kbd>[</kbd> and <kbd>]</kbd> for the level of detail.</p>
-<p class="pb-small" id="demo-draft">Stagecraft 0.4.3: one header, one detail slider and one Pin to top button on every page (the older header of the parley skill is replaced, never added beside it), and the open list of shortcuts never covers the detail slider (the slider moves down below it, or is held at the top while the list is open when the window is too short for both). Draft 0.3.3: Options now comes before Shortcuts, the Shortcuts control (and the ? key) toggles a list of the shortcuts right under it instead of opening a panel, Options has a Bind Shortcuts entry where you change any key, there are more shortcuts (tabs, items waiting for you, review rows, theme, copy as CSV, hidden columns), and the author status counts the publish time as a first sign of life. Draft 0.3.2 added named tabs (this page is split into Stores, Review list, and Notes and numbers, with two placeholder topics, a Method tab and the Log), a short list of shortcuts that stays open beside the page, and a Method tab that says how every figure was derived and lists every typed or assumed value. Draft 0.3.1 added Shortcuts and Options that follow you down the page, text you typed and have not sent that survives a refresh, and figures that line up in the parentheses form.</p>
+<p class="pb-small" id="demo-draft">Stagecraft 0.4.4: one header, one detail slider and one Pin to top button on every page (the older header of the parley skill is replaced, never added beside it), and the open list of shortcuts never covers the detail slider (the slider moves down below it, or is held at the top while the list is open when the window is too short for both). Draft 0.3.3: Options now comes before Shortcuts, the Shortcuts control (and the ? key) toggles a list of the shortcuts right under it instead of opening a panel, Options has a Bind Shortcuts entry where you change any key, there are more shortcuts (tabs, items waiting for you, review rows, theme, copy as CSV, hidden columns), and the author status counts the publish time as a first sign of life. Draft 0.3.2 added named tabs (this page is split into Stores, Review list, and Notes and numbers, with two placeholder topics, a Method tab and the Log), a short list of shortcuts that stays open beside the page, and a Method tab that says how every figure was derived and lists every typed or assumed value. Draft 0.3.1 added Shortcuts and Options that follow you down the page, text you typed and have not sent that survives a refresh, and figures that line up in the parentheses form.</p>
 <p class="pb-small l1">Concise adds the store table notes and the review list. Verbose adds the extra explanations. Exhaustive adds the reference blocks at the bottom.</p>
 <p class="pb-small l2">Verbose: sales are the weekly point-of-sale totals; the change column compares with the week before.</p>
 
@@ -956,6 +975,23 @@ var PB_CONFIG = {
       } finally { PB.store.set("width", "page"); kd("w"); kd("w"); kd("w"); PB.store.set("width", "page"); }
       return out.length ? out.join("; ") : true;
     });
+    await T("palette: home sets the six account colours, light and dark, and the neutral palette returns when it is off", function () {
+      var rs = getComputedStyle(document.documentElement), had = document.documentElement.getAttribute("data-home"), out = [];
+      var want = { orange: ["#fbf5ec", "#221a0f"], purple: ["#f6f2fa", "#000000"], green: ["#f2f8f4", "#000000"], yellow: ["#fcf9ec", "#000000"], blue: ["#f1f6fb", "#000000"], pink: ["#fdf2f7", "#000000"] };
+      var neutralLight = "", neutralDark = "";
+      try {
+        document.documentElement.removeAttribute("data-home"); PB.store.set("theme", "light"); neutralLight = rs.getPropertyValue("--bg").trim(); PB.store.set("theme", "dark"); neutralDark = rs.getPropertyValue("--bg").trim();
+        Object.keys(want).forEach(function (c) {
+          document.documentElement.setAttribute("data-home", c);
+          PB.store.set("theme", "light"); var l = rs.getPropertyValue("--bg").trim(); PB.store.set("theme", "dark"); var dk = rs.getPropertyValue("--bg").trim();
+          if (l !== want[c][0]) out.push(c + " light " + l + " not " + want[c][0]);
+          if (dk !== want[c][1]) out.push(c + " dark " + dk + " not " + want[c][1]);
+          if (!rs.getPropertyValue("--warn").trim()) out.push(c + " has no --warn");
+        });
+        if (neutralLight === want.blue[0]) out.push("neutral light is the same as a home colour");
+      } finally { if (had) document.documentElement.setAttribute("data-home", had); else document.documentElement.removeAttribute("data-home"); PB.store.set("theme", "auto"); }
+      return out.length ? out.join("; ") : true;
+    });
     await T("tables: no scroll box and no max height around any table", function () { var bad = []; Array.prototype.forEach.call(document.querySelectorAll("table.pb-table"), function (t) { var p = t; while (p && p !== document.body) { var cs = getComputedStyle(p); if (cs.overflowX !== "visible" || cs.overflowY !== "visible") bad.push(p.id || p.tagName); if (p !== t && cs.maxHeight !== "none") bad.push("max-height " + (p.id || p.tagName)); p = p.parentElement; } if (getComputedStyle(t).maxHeight !== "none") bad.push("table max-height"); }); return !bad.length || bad.join(","); });
     await T("fit: the page does not scroll sideways at this width", function () { var r = document.documentElement; return r.scrollWidth <= r.clientWidth + 1 || "scrollWidth " + r.scrollWidth + " > " + r.clientWidth; });
     await T("fit: low-priority columns are hidden first, and only when needed", function () { var c = P.get(stores).columns(), auto = c.filter(function (x) { return x.auto; }).map(function (x) { return x.key; }); var r = stores.getBoundingClientRect(); if (!auto.length) { return (innerWidth >= 600 && r.right <= innerWidth + 1) || "narrow window but nothing hidden, right edge " + r.right; } var noPrio = auto.filter(function (k) { return ["Store", "Region", "Status", "Weekly sales", "Change"].indexOf(k) >= 0; }); return (auto.indexOf("Notes") >= 0 && !noPrio.length && !stores._pbT.chip.hidden && /to fit the screen/.test(stores._pbT.chip.textContent) && r.right <= innerWidth + 1) || "auto=" + auto.join(",") + " chip=" + stores._pbT.chip.textContent; });
@@ -1289,13 +1325,13 @@ var PB_CONFIG = {
 </script>
 <!-- PB:SCRIPT -->
 <script>
-/* Stagecraft 0.4.3. One global, PB. One page config object, PB_CONFIG, defined by the page before this script.
+/* Stagecraft 0.4.4. One global, PB. One page config object, PB_CONFIG, defined by the page before this script.
    Everything is driven by data attributes; see BUILD_NOTES.md for the API. Plain JavaScript, no build step. */
 (function () {
 "use strict";
 var d = document, root = d.documentElement;
 var PB = window.PB = window.PB || {};
-PB.version = "0.4.3";
+PB.version = "0.4.4";
 var CFG = window.PB_CONFIG = window.PB_CONFIG || {};
 var readyResolve; PB.ready = new Promise(function (r) { readyResolve = r; });
 PB.warnings = [];
@@ -1331,7 +1367,7 @@ var CATDEF = { "layout.page_width": "wide", "layout.max_width_px": 1440, "layout
 var CHOICE = { "layout.page_width": ["wide", "fill", "reading"], "layout.text_blocks": ["match", "measure"], "layout.spare_width": ["side_by_side", "leave"], "layout.density": ["comfortable", "compact"],
   "tables.rows": ["one_line", "wrap"], "tables.long_text": ["shrink_then_widen", "widen", "wrap", "cut"], "tables.narrow_screen": ["drop_columns", "page_scroll", "stack"], "tables.column_tools": ["on", "off"],
   "numbers.money_decimals": ["0", "2"], "numbers.negatives": ["parentheses", "minus"], "numbers.currency_label": ["totals", "every", "none"], "numbers.percent_decimals": ["0", "1", "2"],
-  "reader.theme": ["auto", "dark", "light"], "reader.contrast": ["high", "standard"], "reader.palette": ["neutral", "workspace"], "reader.tooltips": ["auto", "hover", "click"], "reader.detail_default": ["0", "1", "2", "3"],
+  "reader.theme": ["auto", "dark", "light"], "reader.contrast": ["high", "standard"], "reader.palette": ["neutral", "workspace", "home"], "reader.tooltips": ["auto", "hover", "click"], "reader.detail_default": ["0", "1", "2", "3"],
   "reader.log_tab": ["on", "hidden", "off"], "reader.shortcuts": ["on", "off"], "reader.floating_menu": ["on", "off"], "reader.floating_list": ["on", "off"], "reader.bind_shortcuts": ["on", "off"], "links.claude_pages": ["browser", "app"], "header.author": ["full", "name", "off"], "freshness.placement": ["float_right", "float_left", "header"], "feedback.undo_countdown": ["when_item_moves", "always", "never"] };
 var MAPSET = { "reader.palette_map": 1, "reader.shortcut_keys": 1 };   /* settings whose value is a map */
 var RANGE = { "layout.max_width_px": [320, 4000], "layout.measure_ch": [45, 110], "layout.float_gap_px": [0, 200], "tables.min_font_px": [8, 20], "tables.filter_box_rows": [0, 100000], "feedback.undo_seconds": [0, 30] };
@@ -3291,6 +3327,11 @@ function initRail() {
 }
 function initHeader() {
   var H = CFG.header, box = $("ah"); box.setAttribute("data-hdr", SET["header.author"]);
+  if (SET["reader.palette"] === "home") {   /* 0.4.4: the whole page in its account home's palette: the header's own home (ORANGE, PURPLE, GREEN, YELLOW, BLUE, PINK), else the account's colour in reader.palette_map */
+    var hcol = String(H.home || "").toLowerCase(), hacct = String(H.account || "").toLowerCase(), hmap = SET["reader.palette_map"];
+    if (!/^(orange|purple|green|yellow|blue|pink)$/.test(hcol)) { hcol = ""; Object.keys(hmap).forEach(function (k) { if (k.toLowerCase() === hacct) hcol = String(hmap[k]).toLowerCase(); }); }
+    if (/^(orange|purple|green|yellow|blue|pink)$/.test(hcol)) root.setAttribute("data-home", hcol); else warn("palette: reader.palette is 'home' but the page names no home (PB_CONFIG.header.home) and reader.palette_map has no colour for the account, so the neutral palette stays");
+  }
   if (SET["reader.palette"] === "workspace") {   /* a colour per account, from reader.palette_map, as a stripe on the header box */
     var acct = String(H.account || "").toLowerCase(), map = SET["reader.palette_map"], col = "";
     Object.keys(map).forEach(function (k) { if (k.toLowerCase() === acct) col = String(map[k]).toLowerCase(); });

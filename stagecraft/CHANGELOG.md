@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.4: page colours "home"
+
+- reader.palette gains "home": the whole page wears its account home's palette (orange, purple, green, yellow, blue or pink), light and dark, always high contrast. The colour comes from the page's own header home (PB_CONFIG.header.home, upper or lower case) or, with none, from the account's entry in reader.palette_map. With neither the neutral palette stays and one warning says why. The default stays "neutral"; no default is changed by this release.
+- The six palettes are copied from the parley header snippet (sha1 9249e9231410). When that file changes colour, this one follows and the hash is noted here again.
+- Two things differ from the parley values, both so the text pairs this skill checks reach 7 to 1: the tint behind the --ask text in the dark palettes (#3a1f05 to #221203, orange #40200f to #3b1d0e) and two orange tints (light --accent-soft #f6e6d2 to #f8ecdc, dark --accent-soft #3e2c14 to #302210). Text colours, backgrounds, lines and accents are exactly parley's. --warn and --warn-soft are this skill's own, the same in all six.
+- tests/contrast_check.py now checks all six home palettes, light and dark (12 sets), against the same floors as the neutral one.
+
 ## 0.4.3: three page widths
 
 - `layout.page_width` has three values: `wide` (the new default: up to `layout.max_width_px`, now 1440, centred, with a clear band each side), `fill` (no cap, the same band) and `reading` (one 980 pixel column). Before this, `fill` was the default and capped at 1600. A page whose reader chose `fill` or `reading` keeps that choice; the cap now applies to `wide` only.

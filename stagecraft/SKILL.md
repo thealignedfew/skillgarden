@@ -6,7 +6,7 @@ description: How to build, lay out and publish an artifact page so it fits the p
 
 # Stagecraft
 
-Version 0.4.3. A page built with stagecraft behaves like a small app: it fits the window it is opened in, its tables can be sorted, filtered and rearranged, it remembers how its reader set it up, and it can ask its reader a question and carry the answer back to the session that made it.
+Version 0.4.4. A page built with stagecraft behaves like a small app: it fits the window it is opened in, its tables can be sorted, filtered and rearranged, it remembers how its reader set it up, and it can ask its reader a question and carry the answer back to the session that made it.
 
 Stagecraft has two halves, and the split matters.
 

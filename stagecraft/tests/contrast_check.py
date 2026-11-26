@@ -48,6 +48,8 @@ def palettes(css):
     rule = re.compile(r"(@media[^{]*\{)?\s*([^{}@]+)\{([^{}]*--bg:[^{}]*)\}")
     for m in rule.finditer(css):
         media, sel, body = m.group(1) or "", m.group(2), m.group(3)
+        if "data-home" in sel:
+            continue   # 0.4.4: the six home palettes are checked on their own (home_palettes)
         dark = "prefers-color-scheme: dark" in media or 'data-ptheme="dark"' in sel or ('data-theme="dark"' in sel)
         toks = dict((k.strip(), v.strip()) for k, v in re.findall(r"(--[a-z-]+)\s*:\s*(#[0-9a-fA-F]{3,6})\s*;", body))
         sets["dark" if dark else "light"].update(toks)
@@ -63,12 +65,29 @@ def token_sets(css, selector_part, token_re):
         media, sel, body = m.group(1) or "", m.group(2), m.group(3)
         if selector_part and selector_part not in sel:
             continue
+        if "data-home" in sel:
+            continue
         toks = dict((k.strip(), v.strip()) for k, v in re.findall(r"(%s)\s*:\s*(#[0-9a-fA-F]{3,6})\s*;" % token_re, body))
         if not toks:
             continue
         dark = "prefers-color-scheme: dark" in media or 'data-ptheme="dark"' in sel or 'data-theme="dark"' in sel
         sets["dark" if dark else "light"].update(toks)
     return sets
+
+
+def home_palettes(css):
+    """0.4.4: {'orange': {'light': {...}, 'dark': {...}}, ...} from the rules whose selector holds data-home="colour"."""
+    out = {}
+    rule = re.compile(r"(@media[^{]*\{)?\s*([^{}@]+)\{([^{}]*--bg:[^{}]*)\}")
+    for m in rule.finditer(css):
+        media, sel, body = m.group(1) or "", m.group(2), m.group(3)
+        h = re.search(r'data-home="([a-z]+)"', sel)
+        if not h:
+            continue
+        dark = "prefers-color-scheme: dark" in media or 'data-ptheme="dark"' in sel or 'data-theme="dark"' in sel
+        toks = dict((k.strip(), v.strip()) for k, v in re.findall(r"(--[a-z-]+)\s*:\s*(#[0-9a-fA-F]{3,6})\s*;", body))
+        out.setdefault(h.group(1), {"light": {}, "dark": {}})["dark" if dark else "light"].update(toks)
+    return out
 
 
 def main():
@@ -133,6 +152,37 @@ def main():
                 ok = r >= 3.0
                 bad += 0 if ok else 1
                 print("  %s %s %s on %s: %.2f:1 (need 3:1) [%s]" % ("PASS" if ok else "FAIL", t, toks[t], bg, r, name))
+    # 0.4.4: the six home palettes (reader.palette "home"), each light and dark, held to the same floors as the neutral one
+    homes = home_palettes(css)
+    if sorted(homes) != ["blue", "green", "orange", "pink", "purple", "yellow"]:
+        print("FAIL home palettes found: %s, want the six colours" % ", ".join(sorted(homes)))
+        bad += 1
+    for col in sorted(homes):
+        for name in ("light", "dark"):
+            p = homes[col][name]
+            need = set(TEXT + ["--bg", "--surface", "--line", "--accent-soft", "--ask-soft", "--warn-soft"])
+            missing = sorted(need - set(p))
+            if missing:
+                print("FAIL home %s %s palette is missing tokens: %s" % (col, name, ", ".join(missing)))
+                bad += 1
+                continue
+            worst = 99.0
+            fails = []
+            for t in TEXT:
+                for bg in ("--bg", "--surface"):
+                    r = ratio(p[t], p[bg]); worst = min(worst, r)
+                    if r < 7.0:
+                        fails.append("%s on %s %.2f" % (t, bg, r))
+            for bg in ("--bg", "--surface"):
+                r = ratio(p["--line"], p[bg])
+                if r < 3.0:
+                    fails.append("--line on %s %.2f (3:1)" % (bg, r))
+            for a, b in PAIRS:
+                r = ratio(p[a], p[b]); worst = min(worst, r)
+                if r < 7.0:
+                    fails.append("%s on %s %.2f" % (a, b, r))
+            bad += len(fails)
+            print("  %s home %s %s: lowest text pair %.2f:1%s" % ("PASS" if not fails else "FAIL", col, name, worst, "" if not fails else " [" + "; ".join(fails) + "]"))
     # 0.3.2 adds the shortcut list, its toggle and the Method contents bar to this list; 0.3.3 replaces the toggle (gone) with the key button of Bind Shortcuts and the refusal line (--ask on the panel's own surface).
     # 0.3.1: the floating tabs, the strip and the draft line take their colours only from tokens that are checked above:
     # the tab's text and border are --accent on --surface (hover and open: --accent on --accent-soft), the strip and the draft line sit on --surface,
