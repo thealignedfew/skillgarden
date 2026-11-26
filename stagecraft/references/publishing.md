@@ -48,7 +48,8 @@ If `publish.version_in_title` is on, the page's name carries its version and cha
 Only when `publish.other_accounts` is `headless`.
 
 1. Keep one configuration folder per login, each signed in once. The `CLAUDE_CONFIG_DIR` environment variable selects the folder, and with it the account.
-2. Run a headless session with that folder: `claude -p "<instruction ending with a marker line>" --allowedTools "Read,Artifact" --permission-mode dontAsk --add-dir <folder of the page>`. Allow only what the publish needs. Never use a mode that skips permission checks.
+2. Run a headless session with that folder: `claude -p "<instruction ending with a marker line>" --allowedTools "Read,Artifact" --permission-mode dontAsk --add-dir <folder of the page>`. Allow only what the publish needs; if the artifact tools reach the session through an MCP server, allow that server's tools as well. Never use a mode that skips permission checks. Do this once in a small helper script (find the folder, run the session, parse the markers, verify) rather than by hand each time.
+   To update a page that already exists, the instruction must make the session read the page first and, when the read result says the whole page was saved to a file and that the version counts as viewed only once every line of it has been read, Read that whole file before the publish. A session that reads only the first part is refused with "You hadn't viewed the live version"; the fix is the full read, never a forced publish.
 3. Prove the route read-only first (list that account's pages or read one), then publish, then verify with a separate read through the same route. Do not trust the publishing run's own report.
 4. Parse the marker as a whole line. A substring test passes on a run that only mentions the marker.
 5. Pin every scheduled publish to the owning account's folder. A job that uses whichever account the default login is on breaks the day someone signs in again.

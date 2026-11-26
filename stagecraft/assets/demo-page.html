@@ -9,7 +9,7 @@
 <body>
 <!-- PB:STYLE -->
 <style>
-/* Stagecraft 0.4.1. Tokens first: one neutral palette called "default", light and dark. Every text color is at least 7:1 on --bg and --surface, every border at least 3:1 (tests/contrast_check.py computes it). The page's own colors use these tokens: --bg --surface --fg --muted --line --accent --accent-soft --ask --ask-soft --ok --warn --warn-soft. */
+/* Stagecraft 0.4.2. Tokens first: one neutral palette called "default", light and dark. Every text color is at least 7:1 on --bg and --surface, every border at least 3:1 (tests/contrast_check.py computes it). The page's own colors use these tokens: --bg --surface --fg --muted --line --accent --accent-soft --ask --ask-soft --ok --warn --warn-soft. */
 :root { --bg: #f3f6fa; --surface: #ffffff; --fg: #14181f; --muted: #444c58; --line: #67727f; --accent: #0f4a80; --accent-soft: #dcebf8; --ask: #951a0a; --ask-soft: #fbe6e3; --ok: #235521; --warn: #6e4300; --warn-soft: #fbefd5; --shade: rgba(10, 14, 20, .45); --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace; color-scheme: light; }
 :root[data-contrast="standard"] { --muted: #5a6573; --accent: #1b62a8; --ask: #b3261a; --ok: #2d6a2a; --warn: #8a5600; }
 :root { --ws-orange: #b34a00; --ws-purple: #7a3fb0; --ws-green: #2c7a2a; --ws-yellow: #8a6a00; --ws-blue: #1e6bb8; --ws-pink: #b83280; }
@@ -366,7 +366,7 @@ html[data-pb-density="compact"] .pb-card { padding: 7px 10px; }
 </style>
 <!-- /PB:STYLE -->
 <!-- PB:HEADER -->
-<div id="pb-top" data-playbook="0.4.1">
+<div id="pb-top" data-playbook="0.4.2">
   <div class="ah" id="ah" data-artifact-header="2.10" data-live="grey" role="note" aria-label="Who made this page and whether it is watched">
     <span class="ah-st"><span class="ah-dot" aria-hidden="true"></span><span id="ah-status">Author status unknown</span></span>
     <span id="ah-by">Authored by <b id="ah-seat">unknown author</b> <span class="ah-uuid" id="ah-uuid"></span></span>
@@ -415,7 +415,7 @@ html[data-pb-density="compact"] .pb-card { padding: 7px 10px; }
 
 <h1>Bakery chain weekly review</h1>
 <p class="pb-lead">An invented bakery chain with twelve stores, used to show every part of stagecraft. All names and figures are made up. Press <kbd>o</kbd> for the options, <kbd>/</kbd> to filter, <kbd>[</kbd> and <kbd>]</kbd> for the level of detail.</p>
-<p class="pb-small" id="demo-draft">Stagecraft 0.4.1: one header, one detail slider and one Pin to top button on every page (the older header of the parley skill is replaced, never added beside it), and the open list of shortcuts never covers the detail slider (the slider moves down below it, or is held at the top while the list is open when the window is too short for both). Draft 0.3.3: Options now comes before Shortcuts, the Shortcuts control (and the ? key) toggles a list of the shortcuts right under it instead of opening a panel, Options has a Bind Shortcuts entry where you change any key, there are more shortcuts (tabs, items waiting for you, review rows, theme, copy as CSV, hidden columns), and the author status counts the publish time as a first sign of life. Draft 0.3.2 added named tabs (this page is split into Stores, Review list, and Notes and numbers, with two placeholder topics, a Method tab and the Log), a short list of shortcuts that stays open beside the page, and a Method tab that says how every figure was derived and lists every typed or assumed value. Draft 0.3.1 added Shortcuts and Options that follow you down the page, text you typed and have not sent that survives a refresh, and figures that line up in the parentheses form.</p>
+<p class="pb-small" id="demo-draft">Stagecraft 0.4.2: one header, one detail slider and one Pin to top button on every page (the older header of the parley skill is replaced, never added beside it), and the open list of shortcuts never covers the detail slider (the slider moves down below it, or is held at the top while the list is open when the window is too short for both). Draft 0.3.3: Options now comes before Shortcuts, the Shortcuts control (and the ? key) toggles a list of the shortcuts right under it instead of opening a panel, Options has a Bind Shortcuts entry where you change any key, there are more shortcuts (tabs, items waiting for you, review rows, theme, copy as CSV, hidden columns), and the author status counts the publish time as a first sign of life. Draft 0.3.2 added named tabs (this page is split into Stores, Review list, and Notes and numbers, with two placeholder topics, a Method tab and the Log), a short list of shortcuts that stays open beside the page, and a Method tab that says how every figure was derived and lists every typed or assumed value. Draft 0.3.1 added Shortcuts and Options that follow you down the page, text you typed and have not sent that survives a refresh, and figures that line up in the parentheses form.</p>
 <p class="pb-small l1">Concise adds the store table notes and the review list. Verbose adds the extra explanations. Exhaustive adds the reference blocks at the bottom.</p>
 <p class="pb-small l2">Verbose: sales are the weekly point-of-sale totals; the change column compares with the week before.</p>
 
@@ -1276,13 +1276,13 @@ var PB_CONFIG = {
 </script>
 <!-- PB:SCRIPT -->
 <script>
-/* Stagecraft 0.4.1. One global, PB. One page config object, PB_CONFIG, defined by the page before this script.
+/* Stagecraft 0.4.2. One global, PB. One page config object, PB_CONFIG, defined by the page before this script.
    Everything is driven by data attributes; see BUILD_NOTES.md for the API. Plain JavaScript, no build step. */
 (function () {
 "use strict";
 var d = document, root = d.documentElement;
 var PB = window.PB = window.PB || {};
-PB.version = "0.4.1";
+PB.version = "0.4.2";
 var CFG = window.PB_CONFIG = window.PB_CONFIG || {};
 var readyResolve; PB.ready = new Promise(function (r) { readyResolve = r; });
 PB.warnings = [];

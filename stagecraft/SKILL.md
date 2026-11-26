@@ -6,7 +6,7 @@ description: How to build, lay out and publish an artifact page so it fits the p
 
 # Stagecraft
 
-Version 0.4.1. A page built with stagecraft behaves like a small app: it fits the window it is opened in, its tables can be sorted, filtered and rearranged, it remembers how its reader set it up, and it can ask its reader a question and carry the answer back to the session that made it.
+Version 0.4.2. A page built with stagecraft behaves like a small app: it fits the window it is opened in, its tables can be sorted, filtered and rearranged, it remembers how its reader set it up, and it can ask its reader a question and carry the answer back to the session that made it.
 
 Stagecraft has two halves, and the split matters.
 
@@ -116,6 +116,12 @@ Settings give defaults; these are the calls you still make for each page.
 - **Rulings start empty.** Never preselect Approve, Hold or Strike for the reader.
 - **Shortcuts you add.** `PB.keys.add(key, label, fn, { id: "totals" })`: give it an id that never changes, and a plain default key that no built-in shortcut holds (`references/components.md` lists them).
 
+## What a served page must not carry
+
+The source of a page is readable by everyone the page is shared with. A kit or template that keeps its history as comments ("Name 2026-11-04: the ruling...") puts that history, and the owner's name, into the source of every page built from it, where no reader sees it on the page and anyone can read it in the source. Keep names and dated rulings in the skill text, not in anything a page is built from.
+
+`scripts/served_scrub.py` removes every comment (HTML, CSS and JS) that names the owner, and touches nothing else: not text, strings, attributes or code. The words that name the owner are the person's own list, one regular expression per line, in `scrub_terms.txt` beside the script or in `~/.stagecraft/`, because no file of the skill may name anyone; with no list it changes nothing. `python scripts/served_scrub.py page.html` is a dry run that says what would go and how many mentions outside comments it leaves; `--apply` rewrites the page and saves the original (`--backup-dir`). An exempt marker keeps its marker and loses a reason that names the owner. A page the script cannot read (an unterminated string or comment) is left as it was. `python tests/test_served_scrub.py` tests it on made-up names.
+
 ## The publish check
 
 `hooks/stagecraft_gate.py` is optional and acts as `check.mode` says: it reminds, refuses, or stays out of the way. It looks for the four core marks, for the layout mistakes of `references/layout.md` that can be seen without opening the page (a page that carries the older parley header beside Stagecraft's own is counted among them: a reminder naming the fix, a refusal when `check.mode` is refuse), for a declared tab that has no content, and (as `method.tab` says: reminder, refusal or nothing) for a page that shows data and has no filled Method tab. Installing it is a change to the person's settings file, so it is theirs to run: hand them the one command, do not install it yourself.
@@ -135,6 +141,8 @@ Settings give defaults; these are the calls you still make for each page.
 | `tests/contrast_check.py` | Computes the palette's contrast from the include file and fails under the floor | After changing a colour token |
 | `tests/check_syntax.py` | Runs `node --check` on every inline script of the include file and the demo | After changing the include file (needs node) |
 | `tests/smoke_test.py` | Runs the options script, the injector and the publish check on a machine with none of your folders | After any change to the scripts |
+| `scripts/served_scrub.py` | Takes comments that name the owner out of a page's source | Before publishing a page built from a kit or template that keeps history in comments |
+| `tests/test_served_scrub.py` | Tests the scrub on made-up names, then on any page you name | After changing the scrub |
 
 ## Limits of this release
 

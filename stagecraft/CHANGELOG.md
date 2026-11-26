@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.2: no owner name in a served page
+
+- New `scripts/served_scrub.py`: removes the comments (HTML, CSS, JS) that name the page's owner from a page's source, and nothing else. The owner's words are a local list (`scrub_terms.txt`), so the script itself names nobody. Dry run by default, `--apply` rewrites and saves the original. A page the lexer cannot read is left alone.
+- New `tests/test_served_scrub.py`: made-up names, tricky inputs (`//` in a string or a regex, a quote in a regex, template literals, a CRLF page, an exempt marker), then `node --check` on every inline script before and after for any real page named.
+- `SKILL.md` has a section on it, "What a served page must not carry". Why: a kit that keeps its history as comments puts the owner's name and dated rulings into the source of every page it builds, shared pages included.
+- `references/publishing.md`, "Publishing as another account": says to read the whole saved copy of an existing page before an update (a large page's read returns only its head; a session that skips the rest is refused as unread), to allow the MCP server's tools when the artifact tools come from one, and to keep the route in one helper script.
+- The version is 0.4.2 in `SKILL.md`, the include file and the demo page (the smoke test keeps the three equal); nothing else in the include file changed, and no setting or default changed.
+
 ## 0.4.1: a headless page says Source
 
 - On a page published headless the header's owner line no longer reads "Questions: the author's question page". It reads "Source: link" and "question page": link opens the page the copy was made from, the second link opens the author's question page. One new optional header field, `source` (the http or https address of the page the copy was made from), and one optional field, `questions_label`, for the second link's words. With one address only that link shows; with neither the line is hidden. A page published from a live session is unchanged.
