@@ -32,7 +32,7 @@ Other text-block cases:
 
 ## Page width and spare space
 
-By default (`layout.page_width: fill`) the content area grows with the window up to `layout.max_width_px`, with a side gutter that never drops below 16 pixels. Do not centre a fixed-width column in a wide window and leave the rest black.
+By default (`layout.page_width: wide`) the content area grows with the window up to `layout.max_width_px` (1440), centred, with a clear band each side (128 pixels on a window wider than 1140, otherwise a gutter that never drops below 16). `fill` removes the cap; `reading` is one 980 pixel column. The reader switches per page in Options or with the w key. Do not centre a narrow fixed-width column in a wide window and leave the rest black.
 
 When the window is wider than the content needs, spend the width before leaving it empty:
 

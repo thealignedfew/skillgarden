@@ -1,4 +1,4 @@
-<!-- Stagecraft 0.4.2 (snippet). One include that turns an HTML artifact page into a small self-contained app.
+<!-- Stagecraft 0.4.3 (snippet). One include that turns an HTML artifact page into a small self-contained app.
      Three marked parts, copy all three:
        1. PB:STYLE  : one style block, first thing in the page content (the neutral palette named "default", then the components);
        2. PB:HEADER : markup, first thing in the page content (header box, detail rail, Options panel, tooltip, comment box);
@@ -16,7 +16,7 @@
      comments when publishing so rulings, answers, option mirroring and comments can work. -->
 <!-- PB:STYLE -->
 <style>
-/* Stagecraft 0.4.2. Tokens first: one neutral palette called "default", light and dark. Every text color is at least 7:1 on --bg and --surface, every border at least 3:1 (tests/contrast_check.py computes it). The page's own colors use these tokens: --bg --surface --fg --muted --line --accent --accent-soft --ask --ask-soft --ok --warn --warn-soft. */
+/* Stagecraft 0.4.3. Tokens first: one neutral palette called "default", light and dark. Every text color is at least 7:1 on --bg and --surface, every border at least 3:1 (tests/contrast_check.py computes it). The page's own colors use these tokens: --bg --surface --fg --muted --line --accent --accent-soft --ask --ask-soft --ok --warn --warn-soft. */
 :root { --bg: #f3f6fa; --surface: #ffffff; --fg: #14181f; --muted: #444c58; --line: #67727f; --accent: #0f4a80; --accent-soft: #dcebf8; --ask: #951a0a; --ask-soft: #fbe6e3; --ok: #235521; --warn: #6e4300; --warn-soft: #fbefd5; --shade: rgba(10, 14, 20, .45); --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace; color-scheme: light; }
 :root[data-contrast="standard"] { --muted: #5a6573; --accent: #1b62a8; --ask: #b3261a; --ok: #2d6a2a; --warn: #8a5600; }
 :root { --ws-orange: #b34a00; --ws-purple: #7a3fb0; --ws-green: #2c7a2a; --ws-yellow: #8a6a00; --ws-blue: #1e6bb8; --ws-pink: #b83280; }
@@ -37,7 +37,7 @@ kbd { font: 12px/1 var(--mono); padding: 2px 6px; border: 1px solid var(--line);
 
 /* Shell: one page scroll, 16px gutters, room for the fixed detail rail on wide screens */
 #pb-shell { margin: 0 auto; width: min(var(--pb-width, 1600px), 100%); padding-block: 8px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: block; }
-@media (min-width: 1141px) { html:not([data-railpos="top"]) #pb-shell { width: min(var(--pb-width, 1600px), calc(100% - 2 * var(--pb-band, 120px))); } }
+@media (min-width: 1141px) { html:not([data-railpos="top"]) #pb-shell { width: min(var(--pb-width, 1600px), calc(100% - 2 * var(--pb-band, 128px))); } }
 html[data-pb-band] #pb-shell { width: min(var(--pb-width, 1600px), calc(100% - 2 * var(--pb-band, 0px))); }
 #pb-top { display: contents; }   /* 0.3.3: no box of its own: its children (the header box, the list of shortcuts, the detail slider, the data-through block) are laid out in the shell, so the sticky list can stay pinned for the whole page */
 /* 0.3.0: the "data through" block (PB_CONFIG.sources, freshness.placement). One source reads "Data through 30 Jan 2026". Several: a title, then each source as its name with its date under it, oldest first; a source behind the newest says so. A date never breaks inside itself and a name breaks only between words. Floating, the block is --pb-freshw wide (184 px, set by the script) and stays in view at the left or right edge, stacked above the detail slider when both are on one edge; when the window is too narrow or too short it joins the page flow in the header and covers nothing. */
@@ -374,7 +374,7 @@ html[data-pb-density="compact"] .pb-card { padding: 7px 10px; }
 <!-- /PB:STYLE -->
 
 <!-- PB:HEADER -->
-<div id="pb-top" data-playbook="0.4.2">
+<div id="pb-top" data-playbook="0.4.3">
   <div class="ah" id="ah" data-artifact-header="2.10" data-live="grey" role="note" aria-label="Who made this page and whether it is watched">
     <span class="ah-st"><span class="ah-dot" aria-hidden="true"></span><span id="ah-status">Author status unknown</span></span>
     <span id="ah-by">Authored by <b id="ah-seat">unknown author</b> <span class="ah-uuid" id="ah-uuid"></span></span>
@@ -423,13 +423,13 @@ html[data-pb-density="compact"] .pb-card { padding: 7px 10px; }
 
 <!-- PB:SCRIPT -->
 <script>
-/* Stagecraft 0.4.2. One global, PB. One page config object, PB_CONFIG, defined by the page before this script.
+/* Stagecraft 0.4.3. One global, PB. One page config object, PB_CONFIG, defined by the page before this script.
    Everything is driven by data attributes; see BUILD_NOTES.md for the API. Plain JavaScript, no build step. */
 (function () {
 "use strict";
 var d = document, root = d.documentElement;
 var PB = window.PB = window.PB || {};
-PB.version = "0.4.2";
+PB.version = "0.4.3";
 var CFG = window.PB_CONFIG = window.PB_CONFIG || {};
 var readyResolve; PB.ready = new Promise(function (r) { readyResolve = r; });
 PB.warnings = [];
@@ -457,12 +457,12 @@ PB.safeId = safeId;
 var CFGKEY = String(CFG.key || slug(d.title) || slug(location.pathname) || "page").replace(/[^A-Za-z0-9_.-]/g, "-");
 CFG.key = CFGKEY;
 /* ---------- settings (0.2.0): PB_CONFIG.defaults is the output of options.py page-config. Every key is optional and falls back to the catalog default. ---------- */
-var CATDEF = { "layout.page_width": "fill", "layout.max_width_px": 1600, "layout.text_blocks": "match", "layout.measure_ch": 75, "layout.spare_width": "side_by_side", "layout.density": "comfortable", "layout.float_gap_px": 32,
+var CATDEF = { "layout.page_width": "wide", "layout.max_width_px": 1440, "layout.text_blocks": "match", "layout.measure_ch": 75, "layout.spare_width": "side_by_side", "layout.density": "comfortable", "layout.float_gap_px": 32,
   "tables.rows": "one_line", "tables.long_text": "shrink_then_widen", "tables.min_font_px": 11, "tables.narrow_screen": "drop_columns", "tables.filter_box_rows": 8, "tables.column_tools": "on",
   "numbers.currency": "USD", "numbers.money_decimals": "0", "numbers.negatives": "parentheses", "numbers.currency_label": "totals", "numbers.percent_decimals": "1",
   "reader.theme": "auto", "reader.contrast": "high", "reader.palette": "neutral", "reader.palette_map": {}, "reader.tooltips": "auto", "reader.detail_default": "1", "reader.log_tab": "on", "reader.shortcuts": "on", "reader.floating_menu": "on", "reader.floating_list": "on", "reader.bind_shortcuts": "on", "reader.shortcut_keys": {}, "links.claude_pages": "browser",
   "header.author": "full", "freshness.placement": "float_right", "feedback.undo_countdown": "when_item_moves", "feedback.undo_seconds": 5 };
-var CHOICE = { "layout.page_width": ["fill", "reading"], "layout.text_blocks": ["match", "measure"], "layout.spare_width": ["side_by_side", "leave"], "layout.density": ["comfortable", "compact"],
+var CHOICE = { "layout.page_width": ["wide", "fill", "reading"], "layout.text_blocks": ["match", "measure"], "layout.spare_width": ["side_by_side", "leave"], "layout.density": ["comfortable", "compact"],
   "tables.rows": ["one_line", "wrap"], "tables.long_text": ["shrink_then_widen", "widen", "wrap", "cut"], "tables.narrow_screen": ["drop_columns", "page_scroll", "stack"], "tables.column_tools": ["on", "off"],
   "numbers.money_decimals": ["0", "2"], "numbers.negatives": ["parentheses", "minus"], "numbers.currency_label": ["totals", "every", "none"], "numbers.percent_decimals": ["0", "1", "2"],
   "reader.theme": ["auto", "dark", "light"], "reader.contrast": ["high", "standard"], "reader.palette": ["neutral", "workspace"], "reader.tooltips": ["auto", "hover", "click"], "reader.detail_default": ["0", "1", "2", "3"],
@@ -2122,7 +2122,8 @@ PB.layout = {
 
 /* ---------- shell, tabs, Log (components 3, 22) ---------- */
 var shell, mainPanel, logPanel, tabMain, tabLog;
-function widthCap() { var m = FROMDEF["layout.max_width_px"] ? SET["layout.max_width_px"] : (+CFG.width > 0 ? +CFG.width : SET["layout.max_width_px"]); return CUR["layout.page_width"] === "reading" ? Math.min(m, 720) : m; }   /* a reader setting beats PB_CONFIG.width */
+function pageWidthMode() { var w = PB.store.get("width"); return (w === "wide" || w === "fill" || w === "reading") ? w : CUR["layout.page_width"]; }   /* 0.4.3: this viewer's choice, else the page default */
+function widthCap() { var mode = pageWidthMode(); if (mode === "fill") return 100000; var m = FROMDEF["layout.max_width_px"] ? SET["layout.max_width_px"] : (+CFG.width > 0 ? +CFG.width : SET["layout.max_width_px"]); return mode === "reading" ? Math.min(m, 980) : m; }   /* wide: up to layout.max_width_px; fill: no cap; reading: one 980 px column. A reader setting beats PB_CONFIG.width */
 var FRESH = null, FRESHW = 184;   /* 184 px: two-word source names such as "Supplier invoices" or "Point-of-sale totals" fit on one line at 12.5 px; costs 192 px of band on each side at most */
 /* 0.3.3 (a reader's request, 2026-11-19: "This should also have the hh:mm in 23:59 format"): a value that carries a time shows it, 24-hour, after the date; a date alone stays a date */
 function dayText(v) { var m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(?:\s*([A-Z]{2,4})\b)?)?/.exec(String(v)); if (!m) return String(v); return (+m[3]) + " " + ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][+m[2] - 1] + " " + m[1] + (m[4] ? " " + m[4] + ":" + m[5] + (m[6] ? " " + m[6] : "") : ""); }
@@ -2204,7 +2205,7 @@ function applyBand() { /* a clear band of layout.float_gap_px between the conten
   ftUpdate();
 }
 function applyAttrs() { /* the layout settings as attributes on the root, where the style sheet reads them */
-  root.setAttribute("data-pb-width", CUR["layout.page_width"]); root.setAttribute("data-pb-text", CUR["layout.text_blocks"]); root.setAttribute("data-pb-spare", CUR["layout.spare_width"]);
+  root.setAttribute("data-pb-width", pageWidthMode()); root.setAttribute("data-pb-text", CUR["layout.text_blocks"]); root.setAttribute("data-pb-spare", CUR["layout.spare_width"]);
   var dn = PB.store.get("density"); root.setAttribute("data-pb-density", dn === "page" ? CUR["layout.density"] : dn);
   root.setAttribute("data-pb-rows", CUR["tables.rows"]); root.setAttribute("data-contrast", SET["reader.contrast"]); root.style.setProperty("--pb-measure", CUR["layout.measure_ch"] + "ch");
   if (shell) shell.style.setProperty("--pb-width", widthCap() + "px");
@@ -2525,6 +2526,7 @@ function registerOptions() {
   if (CFG.detail !== false) PB.options.add({ name: "detail", label: "Level of detail", type: "select", allowed: [0, 1, 2, 3], labels: ["Zero", "Concise", "Verbose", "Exhaustive"], "default": DETAIL0, section: "Appearance", onChange: function (v) { if (v !== currentLvl) setLvl(v, false); } });
   PB.options.add({ name: "railpos", label: "Detail rail position", type: "select", allowed: ["side", "top"], labels: ["Side", "Pinned to the top"], "default": "side", section: "Appearance", onChange: function (v) { root.setAttribute("data-railpos", v); if (shell) applyBand(); var p = $("ah-pin"); if (p) { p.textContent = v === "top" ? "Pin to side" : "Pin to top"; p.setAttribute("aria-pressed", v === "top" ? "true" : "false"); } } });
   PB.options.add({ name: "fit", label: "Fit tables to the width", type: "toggle", "default": SET["tables.narrow_screen"] !== "page_scroll", section: "Appearance", onChange: function (v) { d.body.setAttribute("data-fit", v ? "on" : "off"); TABLES.forEach(function (T) { T.noFit = false; }); fitAll(); layoutPass(); } });
+  PB.options.add({ name: "width", label: "Page width", type: "select", allowed: ["page", "wide", "fill", "reading"], labels: ["Page default", "Wide (capped, centred)", "Fill (no cap)", "Reading column"], "default": "page", section: "Appearance", onChange: function () { applyAttrs(); if (FITLIVE) { fitAll(); layoutPass(); } } });
   PB.options.add({ name: "density", label: "Density", type: "select", allowed: ["page", "comfortable", "compact"], labels: ["Page default", "Comfortable", "Compact"], "default": "page", section: "Appearance", onChange: function () { applyAttrs(); if (FITLIVE) { fitAll(); layoutPass(); } } });
   PB.options.add({ name: "links", label: "Claude links open in", type: "select", allowed: ["browser", "app"], labels: ["A browser tab", "The Claude app"], "default": SET["links.claude_pages"], section: "Appearance" });
   PB.options.add({ name: "tipmode", label: "Tooltips", type: "select", allowed: ["page", "hover", "click"], labels: ["Page default", "Open on hover", "Open on click"], "default": "page", section: "Appearance", onChange: function () { hideTip(); } });
@@ -2576,6 +2578,7 @@ function sendKey() {   /* Ctrl+Enter in the comment box or in the answer box of 
   var sec = a.closest ? a.closest("section.pb-ask") : null, A = sec && sec._pbAsk; if (A && A.ta === a) { sendAsk(A); return true; }
   return false;
 }
+function cycleWidth() { var order = ["wide", "fill", "reading"], nx = order[(order.indexOf(pageWidthMode()) + 1) % 3]; PB.store.set("width", nx); applyAttrs(); if (FITLIVE) { fitAll(); layoutPass(); } PB.toast("Page width: " + { wide: "Wide", fill: "Fill", reading: "Reading column" }[nx]); return true; }
 function cycleTheme() { var order = ["auto", "dark", "light"], nx = order[(order.indexOf(PB.store.get("theme")) + 1) % 3]; PB.store.set("theme", nx); PB.toast("Theme: " + { auto: "Auto", dark: "Dark", light: "Light" }[nx]); return true; }
 function tableAt() { var a = d.activeElement, tb = a && a.closest ? a.closest("table.pb-table") : null; if (!tb && ptr.t && ptr.t.closest) tb = ptr.t.closest("table.pb-table"); return tb && tb._pbT ? tb._pbT : null; }   /* the table with focus, else the one under the pointer */
 function csvKey() { var T = tableAt(); if (!T) return false; PB.copy(PB.csv(T.el), T.csvBtn || null, T.bar); return true; }
@@ -2584,6 +2587,7 @@ function registerKeys() {
   PB.keys.add("?", "Show or hide this list of shortcuts", function () { PB.shortcuts.toggle(); }, { id: "shortcuts", order: 10 });
   PB.keys.add("o", "Open the options", function () { PB.options.open(); }, { id: "options", order: 20 });
   PB.keys.add("t", "Change the theme: Auto, Dark, Light", cycleTheme, { id: "theme", order: 30 });
+  PB.keys.add("w", "Change the page width: Wide, Fill, Reading", cycleWidth, { id: "page-width", order: 31 });
   PB.keys.add("1", "Go to tab 1", tabN(1), { id: "tab-1", order: 62, when: function () { return MULTI && visTabs().length >= 1; } });
   for (var n = 2; n <= 9; n++) (function (n) { PB.keys.add(String(n), "Go to tab " + n, tabN(n), { id: "tab-" + n, order: 62 + n - 1, when: function () { return MULTI && visTabs().length >= n; } }); })(n);
   PB.keys.add(",", "Go to the previous tab", tabStep(-1), { id: "tab-prev", order: 60, when: function () { return MULTI && visTabs().length >= 2; } });

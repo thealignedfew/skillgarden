@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.3: three page widths
+
+- `layout.page_width` has three values: `wide` (the new default: up to `layout.max_width_px`, now 1440, centred, with a clear band each side), `fill` (no cap, the same band) and `reading` (one 980 pixel column). Before this, `fill` was the default and capped at 1600. A page whose reader chose `fill` or `reading` keeps that choice; the cap now applies to `wide` only.
+- The reader changes the width per page without opening a settings file: a "Page width" choice in the Options panel and the `w` key (Wide, Fill, Reading). It is kept in the reader's browser, so two readers of one page do not affect each other.
+- The clear band beside the content on a window wider than 1140 pixels is 128 pixels (was 120).
+- The demo page's self-test has a check for the three widths and the `w` key; it passes at 1920, 1280 and 700 pixels in headless Chrome. Two older checks fail in that headless run at 1280 and 700 pixels exactly as they do on 0.4.2 (a filter-and-hidden-column ladder check and a measured-paragraph check); they are not caused by this change.
+- The version is 0.4.3 in `SKILL.md`, the include file and the demo page. `layout.page_width` and `layout.max_width_px` changed their defaults; no other setting did.
+
 ## 0.4.2: no owner name in a served page
 
 - New `scripts/served_scrub.py`: removes the comments (HTML, CSS, JS) that name the page's owner from a page's source, and nothing else. The owner's words are a local list (`scrub_terms.txt`), so the script itself names nobody. Dry run by default, `--apply` rewrites and saves the original. A page the lexer cannot read is left alone.
