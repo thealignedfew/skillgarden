@@ -1,4 +1,4 @@
-# brake.ps1  ramgovern brake (0.2.0).
+# brake.ps1  ramgovern brake (0.2.1).
 #
 # What it does. While you are at the machine (keyboard or mouse within active_window_sec), every process listed as an enabled
 # target in brake.json is slowed, never stopped: affinity to the last <threads> logical processors, BelowNormal priority,
@@ -70,7 +70,7 @@ function Say($m) { try { Add-Content -Path $Log -Value ("$(Stamp) brake $m") -En
 $orig = @{}   # pid -> @(affinity, priority) as found before the first brake
 function Apply($p, $brake, $mask) {
   try {
-    if ($brake) { if (-not $orig.ContainsKey($p.Id)) { $orig[$p.Id] = @([int64]$p.ProcessorAffinity, [string]$p.PriorityClass) }
+    if ($brake) { if (-not $orig.ContainsKey($p.Id)) { if ([int64]$p.ProcessorAffinity -eq $mask -and [string]$p.PriorityClass -eq 'BelowNormal') { $orig[$p.Id] = @($allMask, 'Normal') } else { $orig[$p.Id] = @([int64]$p.ProcessorAffinity, [string]$p.PriorityClass) } }
       $p.ProcessorAffinity = [IntPtr]$mask; $p.PriorityClass = 'BelowNormal'; $r = [RGB]::SetPrio($p.Id, 1, 0) }
     else { $o = if ($orig.ContainsKey($p.Id)) { $orig[$p.Id] } else { @($allMask, 'Normal') }
       $p.ProcessorAffinity = [IntPtr]$o[0]; $p.PriorityClass = $o[1]; $r = [RGB]::SetPrio($p.Id, 5, 2); $orig.Remove($p.Id) }

@@ -8,7 +8,7 @@ ramgovern pages idle sessions out of RAM on a schedule. It never kills, suspends
 
 Not affiliated with Anthropic or Microsoft. "Claude Code", "VS Code" and "Windows" are named only to say what this works with.
 
-Version 0.2.0. New in this version: an optional brake that slows background programs you name, a read-only sampler, a suggester that names programs worth braking, and a drive check. The trim engine is unchanged from 0.1.0. See [CHANGELOG.md](CHANGELOG.md).
+Version 0.2.1. New in 0.2.0: an optional brake that slows background programs you name, a read-only sampler, a suggester that names programs worth braking, and a drive check. New in 0.2.1: a one-page dashboard, and the brake now puts back a program that was already slowed when it started. The trim engine is unchanged from 0.1.0. See [CHANGELOG.md](CHANGELOG.md).
 
 ## How it works
 
@@ -101,9 +101,13 @@ It works without any settings. Copy `assets/drives.example.json` as `drives.json
 
 **Where the new parts keep their files.** In the ramgovern home: the folder named by the environment variable `RAMGOVERN_HOME`, or else the folder holding `govern.json` (the script's folder or the one above it), or else `.threadops\ramgovern` in your user profile. That is `brake.json`, `drives.json`, `govern.log`, `samples-YYYYMMDD.jsonl` and `procmem-YYYYMMDD.jsonl`.
 
-**Tests.** `python -m unittest discover -s tests` runs 21 tests on made-up samples and drives. They touch no process and no setting.
+**Tests.** `python -m unittest discover -s tests` runs 31 tests on made-up samples, drives and dashboard data. They touch no process and no setting.
 
-**Coming next (0.2.1).** A one-page dashboard of free RAM, commit, trims and brake actions. It is built with the `stagecraft` skill from the same repository and needs it installed.
+**The dashboard (0.2.1, optional).** One page of free RAM now, the lowest free RAM today, how much of the last hour the machine struggled, trims and brakes today, a day-by-hour heat grid of when it struggled, and a table of programs the suggester would ask you about. It reads the sampler's lines, `govern.log` and `brake.json`, and a Method tab explains how every figure was worked out. It needs the `stagecraft` skill from the same repository installed; without it the script stops with a message and writes nothing.
+```
+python scripts\build_dashboard.py
+```
+The page is written to `dashboard\ramgovern-dashboard.html` in the ramgovern home; `--out`, `--days` and the limits that count as "struggling" (`--free-mb`, `--commit-pct`, `--cpu-pct`, `--late-pct`) can be changed. It is a capture, rebuilt whenever you run the script.
 
 ## Settings (`govern.json`)
 
@@ -170,13 +174,14 @@ Exit codes: 0 ok, 1 error, 2 storm halted the run, 3 `govern.stop` present, 4 ru
 | `govern_posttick.py` | Optional Claude Code Stop hook: trims a session right after its own unattended turn. |
 | `govern_posttick_test.py` | Test of the Stop hook, temp folder only. |
 | `wstrim_probe.ps1` | Stand-alone probe: what would one trim release right now? |
-| `scripts/brake.ps1` | The brake (0.2.0). Slows listed background programs while you are at the machine; writes a memory and drive line a minute. |
+| `scripts/brake.ps1` | The brake. Slows listed background programs while you are at the machine; writes a memory and drive line a minute. |
 | `scripts/sampler.ps1` | Read-only sampler: one line every 15 seconds for the suggester. |
 | `scripts/brake_suggest.py` | Names programs worth a brake, from the sampler's lines. |
 | `scripts/disk_health.py` | Drive check: free space, saturation, write endurance, drive errors. |
+| `scripts/build_dashboard.py` | Builds the one-page dashboard (needs the `stagecraft` skill). |
 | `scripts/register_brake.ps1` | Registers the brake and sampler tasks. `-DryRun` shows them first. |
 | `assets/brake.example.json`, `assets/drives.example.json` | Example settings to copy into the ramgovern home. |
-| `tests/` | 21 tests of the suggester and the drive check, on made-up data. |
+| `tests/` | 31 tests of the suggester, the drive check and the dashboard, on made-up data. |
 | `SKILL.md` | Claude Code skill: `/ramgovern status | on | off | pid <n> | brake | drives`. |
 
 Created at run time beside `govern.json`: `govern.log`, `govern.state.json` (CPU baselines between runs), `posttick.state.json`, `summary-YYYYMMDD.md`, and `govern.stop` after a storm. The probe writes `wstrim_probe.log` beside itself when run with `-Apply`.

@@ -59,6 +59,10 @@ The brake refuses its protected list even if `brake.json` names one. Registering
 
 Run `python <GOV>\scripts\disk_health.py` and show its `FLAG` and `ok` lines. It reads the brake's once-a-minute lines, the System event log and, where Windows allows it, the drives' own counters. It changes nothing. If `drives.json` is missing, say that the endurance line is skipped until the user names their SSDs and rated terabytes written (`assets\drives.example.json`).
 
+### /ramgovern dashboard (0.2.1, optional)
+
+Run `python <GOV>\scripts\build_dashboard.py` and give the user the path it prints (`dashboard\ramgovern-dashboard.html` in the ramgovern home). It reads the sampler's lines, `govern.log` and `brake.json`, and changes nothing else. It needs the `stagecraft` skill from the same repository; if the script says it is missing, tell the user to install it and run the command again. The page is a capture, not live. A program the page suggests braking is a question for the user, never an instruction.
+
 ## Hard limits
 
 - Never trim VS Code's main process, its renderers, explorer.exe, dwm.exe, or the foreground process. Never kill or suspend anything.
