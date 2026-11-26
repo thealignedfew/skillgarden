@@ -1,0 +1,18 @@
+{
+  "_about": "ramgovern brake settings. Copy this file as brake.json in the ramgovern home and edit it. A target is slowed, never stopped, while you are at the machine (or, with trigger stress, while the machine is struggling). Add a target only after you have seen it cause trouble, and write down who approved it and why. Names the script protects are refused even if listed here.",
+  "interval_sec": 30,
+  "active_window_sec": 600,
+  "threads": 8,
+  "stress": { "free_mb_below": 1000, "commit_pct_above": 95, "hold_sec": 600 },
+  "targets": [
+    {
+      "name": "ExampleBackgroundApp",
+      "match": "--background",
+      "helpers": [],
+      "enabled": false,
+      "trigger": "",
+      "approved": "your name and the date",
+      "why": "What it did to the machine, with the times you saw it. A copy you open yourself has no --background in its command line and is never touched."
+    }
+  ]
+}

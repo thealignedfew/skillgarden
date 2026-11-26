@@ -8,6 +8,8 @@ ramgovern pages idle sessions out of RAM on a schedule. It never kills, suspends
 
 Not affiliated with Anthropic or Microsoft. "Claude Code", "VS Code" and "Windows" are named only to say what this works with.
 
+Version 0.2.0. New in this version: an optional brake that slows background programs you name, a read-only sampler, a suggester that names programs worth braking, and a drive check. The trim engine is unchanged from 0.1.0. See [CHANGELOG.md](CHANGELOG.md).
+
 ## How it works
 
 A **trim** is one Win32 call, `EmptyWorkingSet` (psapi), on one process. Windows moves that process's resident pages to the standby list, then to the compressed store, then to the pagefile. Nothing is lost and there is nothing to undo: the process faults pages back in on demand.
@@ -64,6 +66,44 @@ If you run sessions unattended on a timer (a scheduler re-prompts each session e
    Run `python govern_posttick_test.py` first. It uses a temp folder and trims nothing. Run from a Claude Code session, its first case also proves the hook finds its own `claude.exe`; from a plain terminal that case checks the "no claude.exe ancestor" path instead.
 
 8. Optional, the slash command: copy `SKILL.md` into a `ramgovern` folder in your Claude Code skills directory to get `/ramgovern status | on | off | pid <n>`.
+
+## The brake and the drive check (0.2.0, optional)
+
+Two more parts, both off until you set them up. Neither stops, suspends or kills anything.
+
+**The brake.** While you are at the machine, it slows the background programs you list: fewer processor threads, below-normal priority, and low memory and disk priority. When you have been away for ten minutes each one gets back the affinity and priority it had before. It exists for programs that other programs start behind your back and that take most of the machine for minutes at a time (a scheduled spreadsheet refresh, an emulator, a sync client). It ships with no targets, so until you add one it only writes the memory and drive lines described below.
+
+1. Check the sampler, which writes one read-only line every 15 seconds (free RAM, commit charge, total processor use, the application in front, the five busiest processes). One run, one line:
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\sampler.ps1 -Once
+   ```
+   `register_brake.ps1` (step 4 below) runs it all day.
+2. After a day or two, ask which programs are worth a brake:
+   ```
+   python scripts\brake_suggest.py --days 7
+   ```
+   It counts how often each program was among the five busiest, at half a core or more, while the machine was struggling (free RAM under 500 MB, commit over 95 percent, or processor use over 90 percent; change them with `--free-mb`, `--commit-pct`, `--cpu-pct`). A program that is often in front of you is your own work and is never suggested, and neither is anything on the protected list or already a target. A suggestion is a question for you, not an order.
+3. Add a target only after you have seen it cause trouble. Copy `assets/brake.example.json` as `brake.json` in the ramgovern home and set `name` (the process name without `.exe`), a `match` that keeps your own copies out (a regex over the command line; empty means every copy), `enabled`, who approved it and why. The running brake re-reads the file within one interval and logs a `CONFIG loaded` line. A target with `"trigger": "stress"` is braked only while the machine is already struggling, whether or not you are there.
+4. Register the two tasks, once, by hand. Look first:
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\register_brake.ps1 -DryRun
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\register_brake.ps1
+   ```
+   They run as you, without elevation, one copy each, started at logon.
+
+The brake refuses a protected list even if `brake.json` names one: Windows itself, `claude`, `Code`, explorer, dwm, the Defender engine, PowerShell, conhost, Zoom, Chrome and Edge. The suggester also leaves out `python` and `node`, because slowing them slows your agents. Undo a target by setting its `enabled` to false; undo the brake with `Unregister-ScheduledTask -TaskName ramgovern-brake -Confirm:$false` and by ending its PowerShell process.
+
+**The drive check.** Reads the brake's once-a-minute lines and says, in plain lines, whether a drive is short of room, saturated, or being written faster than its rating allows over five years, and lists drive errors from the last day:
+```
+python scripts\disk_health.py
+```
+It works without any settings. Copy `assets/drives.example.json` as `drives.json` to name your SSDs and give each disk's rated terabytes written; without that the endurance line is skipped and says so. It also reads the drives' own wear and temperature counters where Windows lets an ordinary user read them.
+
+**Where the new parts keep their files.** In the ramgovern home: the folder named by the environment variable `RAMGOVERN_HOME`, or else the folder holding `govern.json` (the script's folder or the one above it), or else `.threadops\ramgovern` in your user profile. That is `brake.json`, `drives.json`, `govern.log`, `samples-YYYYMMDD.jsonl` and `procmem-YYYYMMDD.jsonl`.
+
+**Tests.** `python -m unittest discover -s tests` runs 21 tests on made-up samples and drives. They touch no process and no setting.
+
+**Coming next (0.2.1).** A one-page dashboard of free RAM, commit, trims and brake actions. It is built with the `stagecraft` skill from the same repository and needs it installed.
 
 ## Settings (`govern.json`)
 
@@ -130,7 +170,14 @@ Exit codes: 0 ok, 1 error, 2 storm halted the run, 3 `govern.stop` present, 4 ru
 | `govern_posttick.py` | Optional Claude Code Stop hook: trims a session right after its own unattended turn. |
 | `govern_posttick_test.py` | Test of the Stop hook, temp folder only. |
 | `wstrim_probe.ps1` | Stand-alone probe: what would one trim release right now? |
-| `SKILL.md` | Claude Code skill: `/ramgovern status | on | off | pid <n>`. |
+| `scripts/brake.ps1` | The brake (0.2.0). Slows listed background programs while you are at the machine; writes a memory and drive line a minute. |
+| `scripts/sampler.ps1` | Read-only sampler: one line every 15 seconds for the suggester. |
+| `scripts/brake_suggest.py` | Names programs worth a brake, from the sampler's lines. |
+| `scripts/disk_health.py` | Drive check: free space, saturation, write endurance, drive errors. |
+| `scripts/register_brake.ps1` | Registers the brake and sampler tasks. `-DryRun` shows them first. |
+| `assets/brake.example.json`, `assets/drives.example.json` | Example settings to copy into the ramgovern home. |
+| `tests/` | 21 tests of the suggester and the drive check, on made-up data. |
+| `SKILL.md` | Claude Code skill: `/ramgovern status | on | off | pid <n> | brake | drives`. |
 
 Created at run time beside `govern.json`: `govern.log`, `govern.state.json` (CPU baselines between runs), `posttick.state.json`, `summary-YYYYMMDD.md`, and `govern.stop` after a storm. The probe writes `wstrim_probe.log` beside itself when run with `-Apply`.
 
@@ -138,11 +185,15 @@ Created at run time beside `govern.json`: `govern.log`, `govern.state.json` (CPU
 
 ```powershell
 Unregister-ScheduledTask -TaskName ramgovern -Confirm:$false   # or your task_name
+Unregister-ScheduledTask -TaskName ramgovern-brake -Confirm:$false     # if you registered the brake
+Unregister-ScheduledTask -TaskName ramgovern-sampler -Confirm:$false   # and the sampler
 ```
 
 Then remove the Stop hook entry if you added one, and delete the folder. Trimmed processes need nothing: they regrow on their own.
 
 ## Limits and honest caveats
+
+- The brake slows a program; it does not make a machine that is too small big enough. A program waiting on a slowed helper takes longer to finish, so check that a target is not something you are waiting on.
 
 - A trim frees RAM but does not reduce **commit**. A machine that is short on commit (the pagefile limit) needs a larger pagefile or fewer processes, not trimming.
 - Trimming costs page-ins later. If a trimmed process wakes, it reads its pages back from the pagefile, which is slower than RAM and slowest on a spinning disk. The idle test, the quiet history for VS Code hosts and the storm halt keep that cost small. Watch `cpu-within-30s` and the daily regrow table.

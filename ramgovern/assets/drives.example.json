@@ -1,0 +1,5 @@
+{
+  "_about": "Optional. Copy as drives.json in the ramgovern home. ssd_volumes: drive letters that are SSDs (their free space is held to the SSD guidance). rated_tbw: physical disk number to the drive maker's rated terabytes written; the disk number is the one disk_health.py prints, for example 1 in 'disk 1 c:'.",
+  "ssd_volumes": ["C"],
+  "rated_tbw": { "1": 600 }
+}

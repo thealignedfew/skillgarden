@@ -1,6 +1,6 @@
 ---
 name: ramgovern
-description: "ramgovern: control a Windows machine's Working Set Governor, which pages idle Claude Code sessions (claude.exe) and idle VS Code extension hosts out of RAM so many sessions can run side by side. /ramgovern status shows whether it is on and what it last did; /ramgovern on turns trimming on; /ramgovern off turns it off; /ramgovern pid <n> trims one process now. Use when the user types /ramgovern, or says 'ramgovern', 'Governor', 'working set', 'trim the idle sessions', 'page out idle sessions', 'free up RAM from idle Claude sessions' or 'turn the Governor on or off'."
+description: "ramgovern: a Windows RAM governor for many Claude Code sessions. Pages idle claude.exe and VS Code extension hosts out of RAM; optionally slows background programs (the brake) and checks drives. Use for /ramgovern (status, on, off, pid, brake, drives) or when asked to trim idle sessions, free RAM, or slow a program that hogs the PC."
 ---
 
 # ramgovern
@@ -44,8 +44,24 @@ Trims one process now, using the full idle test.
 1. Run `& "<GOV>\govern.ps1" -Mode seat -TargetPid <n> -Apply`. It trims only if `enabled` is true, the process is idle for `idle_seconds`, is not the foreground process and is not the caller's own ancestor; otherwise it logs `SKIPPED`, `REFUSED` or `DRY` and says why. Never guess a pid from a name or a memory size: ask the user for it.
 2. Reply with the log line's resident and free-RAM figures, or the reason it was skipped.
 
+### /ramgovern brake (list | suggest | add <name> | off <name>)
+
+The brake is optional (0.2.0). It slows listed background programs while the user is at the machine and puts each back as it found it when they have been away ten minutes. It never stops, suspends or kills.
+
+- `list`: show the targets in `<GOV>\brake.json` (name, the command-line match, helpers, on or off, who approved it and why) and the last ten `brake` lines of the log. If there is no `brake.json`, say the brake has no targets.
+- `suggest`: run `python <GOV>\scripts\brake_suggest.py --days 7` and show its lines. It needs the sampler's lines (`samples-*.jsonl`); if there are none, say so and point to `scripts\sampler.ps1` and `scripts\register_brake.ps1`. "suggest" means worth asking the user about; it is not an instruction.
+- `add <name>`: only with the user's yes, in their own words, for that process. Copy `assets\brake.example.json` to `brake.json` if it does not exist, then add one target: `name` (without `.exe`), a `match` that keeps the user's own copies out, `enabled` true, `approved` (their name and the date) and `why` (the evidence). The running brake logs a `CONFIG loaded` line within one interval; confirm it.
+- `off <name>`: set that target's `enabled` to false. That is the undo.
+
+The brake refuses its protected list even if `brake.json` names one. Registering the scheduled tasks is the user's step: give them `powershell -NoProfile -ExecutionPolicy Bypass -File "<GOV>\scripts\register_brake.ps1" -DryRun` first.
+
+### /ramgovern drives (read-only)
+
+Run `python <GOV>\scripts\disk_health.py` and show its `FLAG` and `ok` lines. It reads the brake's once-a-minute lines, the System event log and, where Windows allows it, the drives' own counters. It changes nothing. If `drives.json` is missing, say that the endurance line is skipped until the user names their SSDs and rated terabytes written (`assets\drives.example.json`).
+
 ## Hard limits
 
 - Never trim VS Code's main process, its renderers, explorer.exe, dwm.exe, or the foreground process. Never kill or suspend anything.
 - Do not widen `targets`, `stage` or `code_types` beyond what the user asked for.
+- Never add a brake target the user has not named and approved, and never brake anything on the protected list.
 - Do not delete `govern.stop` unless the user tells you to.
