@@ -55,6 +55,7 @@
   "questions_cooldown_min": 120,
   "ignore_after_ticks": 4,
   "speak_names": "attention",
+  "rules_text": "full_once",
   "mute_during_zoom": true,
   "hold_during_dictation": true,
   "dictation_apps": [

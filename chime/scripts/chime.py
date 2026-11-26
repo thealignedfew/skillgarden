@@ -19,7 +19,7 @@ standard library only. Windows is the supported platform for sound and toasts.
   python chime.py play urgent|major|important|compact|redalert "<SEAT>" "<what to look at>"
                                 Mid-turn, from a shell command, so the person can refocus while the turn runs.
   python chime.py prompt        UserPromptSubmit hook: injects the per-turn chime rules.
-  python chime.py redalert check|fire|verdict|list|example ...
+  python chime.py redalert check|fire|card|uncarded|verdict|list|example ...
                                 The red alert log and its commands.
   python chime.py usage status|mute|unmute ...      The per-account low-usage mute.
   python chime.py sounds list|set|generate|reset|styles ...
@@ -127,9 +127,9 @@ EVENTS = ("urgent", "important", "boing", "default", "tick", "tick_ready", "tick
           "abandon", "ignored")
 _DEEP_KEYS = ("names", "labels", "account_names", "words", "spoken_names", "texts")     # merged one level deep
 _NUM_KEYS = ("usage_alert_pct", "usage_alert_every_min", "usage_log_from_pct", "questions_cooldown_min",
-             "ignore_after_ticks", "dictation_hold_max_s", "head_gain")
+             "ignore_after_ticks", "dictation_hold_max_s", "head_gain", "red_alert_gain")
 _STR_KEYS = EVENTS + ("mute_file", "usage_server", "sessions_glob", "speak_names", "tick_dir", "stop_gate",
-                      "transcripts_glob", "seat_id_regex", "seat_suffix_regex")
+                      "transcripts_glob", "seat_id_regex", "seat_suffix_regex", "rules_text")
 _BOOL_KEYS = ("mute_during_zoom", "hold_during_dictation")
 _LIST_KEYS = ("dictation_apps", "voice_pool", "question_addressees", "peer_prefixes", "notification_prefixes")
 
@@ -289,6 +289,15 @@ DEFAULT_TEXTS = {
         "very last act, once the prompt is ready and nothing else is left to do; the Stop hook plays it last by itself "
         "when the reply opens #CompactionPrep or #SmartCompact, or has a line opening 'Type /compact', so do not also "
         "play it mid-turn."),
+    # v21: the short line a session gets on every prompt after the first (rules_text full_once or short_always); at most
+    # 350 characters, no placeholders. It carries what a seat needs every turn and says where the rest is.
+    "prompt_rules_short": (
+        "CHIME (full rules: the chime skill). Last line of every reply, exactly: Sound: <sound name> · <SEAT>. The name only, n"
+        "ever an explanation: jobs-done after the person's prompt, the loop's sound on a tick, sonar after a peer's message. Only a re"
+        "ply's FIRST line sets an alert off: MAJOR PROBLEM FOUND, URGENT or IMPORTANT DECISION NEEDED, RED ALERT."),
+    # shown once when a clock-out, mute or silenced-sound notice that an earlier prompt carried no longer holds
+    "rules_status_clear": (
+        "Earlier chime status notices (clocked out, muted, silenced sounds) no longer apply."),
     "brakes_rules": (
         "BRAKES ON for this session (brakes skill). Do no new work. Finish only the step in hand if stopping mid-way "
         "would leave something broken, then stop. The only loop is #KeepWarm; a #KeepWarm tick does the warm-and-card "
@@ -740,12 +749,39 @@ def reset_iso(v):
         return None
 
 
-def usage_values(mod, resets=None):
+def reset_utc(v):
+    """A payload reset time as UTC "YYYY-MM-DDTHH:MM:SSZ", or None (v21). A naive time is taken as local, as reset_iso does."""
+    try:
+        if isinstance(v, bool) or v is None:
+            return None
+        if isinstance(v, (int, float)):
+            dt = datetime.datetime.fromtimestamp(v / 1000.0 if v > 1e11 else float(v)).astimezone()
+        else:
+            dt = datetime.datetime.fromisoformat(str(v).strip().replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.astimezone()
+        return dt.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    except Exception:
+        return None
+
+
+def _numeric(v):
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+
+def usage_values(mod, resets=None, extra=None):
     """[(label, pct)] for every limit the usage endpoint reports. The shaped fetch_usage() keeps only the 5-hour and
     all-model weekly figures, so a per-model weekly limit (the endpoint's "limits" list) and the monthly extra-usage
-    spend would never reach the alarm: read the raw payload when the server offers it."""
+    spend would never reach the alarm: read the raw payload when the server offers it.
+
+    v21: with `extra` (a dict) the raw payload's other facts are put in it, for the cache file: "five_hour" (None when
+    the payload says no window is open, a dict with the percent and the reset times when one is; absent when the
+    payload does not say), "extra_usage" ({"enabled": False}, or enabled with used, limit, pct, currency, limit_reached
+    where the payload has them; absent when the payload does not say), "extra_usage_pct", and "resets_utc" (every reset
+    time in `resets`, as UTC). Nothing about the returned list or `resets` changes."""
     vals = []
     raw = None
+    utc = {}
     if hasattr(mod, "fetch_raw"):
         try:
             raw = mod.fetch_raw()
@@ -760,8 +796,24 @@ def usage_values(mod, resets=None):
                     r = reset_iso((raw.get(k) or {}).get("resets_at"))
                     if r:
                         resets[lbl] = r
+                        utc[lbl] = reset_utc((raw.get(k) or {}).get("resets_at"))
+        if isinstance(extra, dict) and "five_hour" in raw:
+            fh = raw.get("five_hour")
+            if isinstance(fh, dict) and _numeric(fh.get("utilization")) is not None:
+                w = {"pct": _numeric(fh["utilization"])}
+                if reset_iso(fh.get("resets_at")):
+                    w["resets"], w["resets_utc"] = reset_iso(fh.get("resets_at")), reset_utc(fh.get("resets_at"))
+                extra["five_hour"] = w
+            else:
+                extra["five_hour"] = None            # an explicit "no window is open", unlike a field that is missing
         for lim in raw.get("limits") or []:
-            if not isinstance(lim, dict) or lim.get("percent") is None:
+            if not isinstance(lim, dict):
+                continue
+            if isinstance(resets, dict) and str(lim.get("kind") or lim.get("type") or "").lower() in ("session", "five_hour") \
+                    and "5-hour" not in resets and reset_iso(lim.get("resets_at")):
+                resets["5-hour"] = reset_iso(lim.get("resets_at"))      # the 5-hour reset when only limits[] carries it
+                utc["5-hour"] = reset_utc(lim.get("resets_at"))
+            if lim.get("percent") is None:
                 continue
             model = (((lim.get("scope") or {}).get("model") or {}).get("display_name")) or ""
             if model:
@@ -770,9 +822,32 @@ def usage_values(mod, resets=None):
                     r = reset_iso(lim.get("resets_at"))
                     if r:
                         resets["%s weekly" % model] = r
+                        utc["%s weekly" % model] = reset_utc(lim.get("resets_at"))
         ex = raw.get("extra_usage") or {}
         if ex.get("is_enabled") and ex.get("utilization") is not None:
             vals.append(("monthly extra-usage spend", float(ex["utilization"])))
+        if isinstance(extra, dict) and "extra_usage" in raw:
+            if isinstance(raw.get("extra_usage"), dict) and raw["extra_usage"].get("is_enabled"):
+                e = raw["extra_usage"]
+                dp = e.get("decimal_places") if isinstance(e.get("decimal_places"), int) and not isinstance(e.get("decimal_places"), bool) \
+                    and 0 <= e.get("decimal_places") <= 6 else 2
+                out = {"enabled": True}
+                if _numeric(e.get("used_credits")) is not None:
+                    out["used"] = round(_numeric(e["used_credits"]) / 10 ** dp, dp)
+                if _numeric(e.get("monthly_limit")) is not None:
+                    out["limit"] = round(_numeric(e["monthly_limit"]) / 10 ** dp, dp)
+                if _numeric(e.get("utilization")) is not None:
+                    out["pct"] = _numeric(e["utilization"])
+                    extra["extra_usage_pct"] = out["pct"]
+                if isinstance(e.get("currency"), str) and e["currency"]:
+                    out["currency"] = e["currency"]
+                if isinstance(e.get("spend_limit_reached"), bool):
+                    out["limit_reached"] = e["spend_limit_reached"]
+                extra["extra_usage"] = out
+            else:
+                extra["extra_usage"] = {"enabled": False}
+        if isinstance(extra, dict):
+            extra["resets_utc"] = {k: v for k, v in utc.items() if v}
         return vals
     u = mod.fetch_usage(refresh=True)
     if u and not u.get("error"):
@@ -783,6 +858,27 @@ def usage_values(mod, resets=None):
             if b.get("pct") is not None:
                 vals.append(("%s weekly" % b.get("model"), float(b["pct"])))
     return vals
+
+
+def cache_extras(now, extra):
+    """The v21 additions to the usage cache file; the keys written before v21 (vals, at, resets, folder, home) are
+    untouched, so a reader of the old format still reads the new file. schema 2. at_utc and at_offset give `at` (which
+    stays local time with no zone) its zone; resets_utc is every reset time as UTC; five_hour is null when no 5-hour
+    window is open and absent when the reading did not say; extra_usage says on or off with the dollars used and the
+    dollar limit; extra_usage_pct is the percent of the monthly limit (the vals entry "monthly extra-usage spend"
+    holds the same number under its old name, which misleads, and stays for the readers that use it)."""
+    out = {"schema": 2}
+    try:
+        dt = datetime.datetime.fromtimestamp(now).astimezone()
+        z = dt.strftime("%z")
+        out["at_utc"] = dt.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        out["at_offset"] = (z[:3] + ":" + z[3:]) if len(z) == 5 else z
+    except Exception:
+        pass
+    for k in ("resets_utc", "five_hour", "extra_usage", "extra_usage_pct"):
+        if k in extra:
+            out[k] = extra[k]
+    return out
 
 
 def account_home():
@@ -916,10 +1012,11 @@ def usage_alert():
             spec = importlib.util.spec_from_file_location("chime_usage_server", USAGE_SERVER)
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
-            resets = {}
-            u, fresh = {"vals": usage_values(mod, resets)}, True
+            resets, extra = {}, {}
+            u, fresh = {"vals": usage_values(mod, resets, extra)}, True
             if u["vals"]:                            # the cache also keeps when each limit resets, and when it was read
                 u.update({"at": now_iso(now), "resets": resets, "folder": folder_of(home), "home": home})
+                u.update(cache_extras(now, extra))
                 with open(cache, "w", encoding="utf-8") as fh:
                     json.dump(u, fh)
             elif not (os.path.exists(failed_r) and now - os.path.getmtime(failed_r) < 900):
@@ -990,6 +1087,145 @@ def _rules():
 
 
 def _rules_base():
+    head, clock, tail, _muted, _grid = _rules_pieces()
+    return head + clock + tail
+
+
+# ---- v21: the per-turn rules once, then one short line (config "rules_text") ----------------------------------------
+RULES_MODES = ("full_once", "full_always", "short_always")
+RULES_SEEN_DIR = os.path.join(CHIME_HOME, "rules_seen")
+
+
+def rules_mode():
+    """full_once (the default: the whole block on a session's first prompt and on the first prompt after each compaction,
+    one short line otherwise), full_always (the block on every prompt, as before v21) or short_always. Any other value
+    is the default."""
+    m = _C.get("rules_text")
+    return m if m in RULES_MODES else "full_once"
+
+
+def _hash(s):
+    return hashlib.sha1((s or "").encode("utf-8")).hexdigest()[:16]
+
+
+def _seen_path(sid):
+    return os.path.join(RULES_SEEN_DIR, re.sub(r"[^A-Za-z0-9_.-]+", "-", str(sid))[:100] + ".json")
+
+
+def _count_compactions(tp, count, offset):
+    """(compactions, offset): the isCompactSummary records of the transcript (the generator's own count), found
+    incrementally over complete lines past the stored offset. (None, None) when the transcript cannot be read."""
+    try:
+        if not tp or not os.path.isfile(tp):
+            return None, None
+        size = os.path.getsize(tp)
+        if (not isinstance(offset, int) or isinstance(offset, bool) or offset < 0 or offset > size
+                or not isinstance(count, int) or isinstance(count, bool)):
+            count, offset = 0, 0                     # no usable record, or the file was rewritten: count from the start
+        with open(tp, "rb") as fh:
+            fh.seek(offset)
+            chunk = fh.read()
+        cut = chunk.rfind(b"\n")
+        if cut < 0:
+            return count, offset
+        for line in chunk[:cut + 1].split(b"\n"):
+            if b"isCompactSummary" in line:
+                try:
+                    if json.loads(line).get("isCompactSummary"):
+                        count += 1
+                except Exception:
+                    pass
+        return count, offset + cut + 1
+    except Exception:
+        return None, None
+
+
+def _save_seen(path, state):
+    """Write the per-session state; True when it is on disk. A replace that a sync client or a scanner holds up for a
+    moment is tried again, then the file is written in place; only when both fail is it False (the caller then gives the
+    full rules, so a session never goes without them)."""
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+    except Exception:
+        return False
+    tmp = path + ".%d.tmp" % os.getpid()
+    try:
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(state, fh)
+        for i in range(4):
+            try:
+                os.replace(tmp, path)
+                return True
+            except OSError:
+                time.sleep(0.03)
+    except Exception:
+        pass
+    try:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+    except Exception:
+        pass
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(state, fh)
+        return True
+    except Exception:
+        return False
+
+
+def rules_for_prompt(data):
+    """The text the prompt hook injects. full_always is today's: the whole block every time. full_once keeps a small
+    state file per session in the chime home (rules_seen/<session id>.json): the whole block when there is none (a new
+    session), when the transcript shows a compaction since the last print, or when the part that comes from config
+    changed; otherwise the short line, plus the clock-out / mute / silenced notice or the RED ALERT paragraph only when
+    it differs from what the session was last shown. Anything that goes wrong gives the whole block."""
+    mode = rules_mode()
+    if mode == "full_always":
+        return _rules()
+    try:
+        head, clock, tail, is_muted, grid = _rules_pieces()
+        try:
+            ra = ra_paragraph()
+        except Exception:
+            ra = ""
+        full = head + clock + tail + (" " + ra if ra else "")
+        core = head + grid                                  # changes with config or the soundboard, never with the clock or a mute
+        dyn = (clock + (tail if is_muted else "")).strip()  # clocked out or in, silenced sounds, muted
+        short = itext("prompt_rules_short")
+        if mode == "short_always":
+            return short + (" " + dyn if dyn else "")
+        sid = (data or {}).get("session_id") or ""
+        if not sid:
+            return full
+        path = _seen_path(sid)
+        st = _jload(path)
+        st = st if isinstance(st, dict) else {}
+        count, offset = _count_compactions((data or {}).get("transcript_path") or "", st.get("compactions"), st.get("offset"))
+        new = {"core": _hash(core), "dyn": _hash(dyn), "dyn_on": bool(dyn), "ra": _hash(ra),
+               "compactions": count, "offset": offset, "at": now_iso()}
+        grown = (isinstance(count, int) and isinstance(st.get("compactions"), int) and count > st["compactions"])
+        first = not st or st.get("core") != new["core"] or grown
+        if not _save_seen(path, new):
+            return full                                      # nothing remembered: never leave a session without the rules
+        if first:
+            return full
+        parts = [short]
+        if st.get("dyn") != new["dyn"]:
+            if dyn:
+                parts.append(dyn)
+            elif st.get("dyn_on"):
+                parts.append(itext("rules_status_clear"))
+        if ra and st.get("ra") != new["ra"]:
+            parts.append(ra)
+        return " ".join(parts)
+    except Exception:
+        return _rules()
+
+
+def _rules_pieces():
+    """(head, clock, tail, muted, grid): the per-turn rules in the pieces that change at different speeds. head + clock +
+    tail is exactly the text the hook has always injected (before the RED ALERT paragraph); tail is the muted notice while
+    muted and the sound grid otherwise, and grid is the grid either way."""
     n = lambda k: SOUND_NAMES.get(k) or k
     head = itext("prompt_rules", (sys.executable, os.path.abspath(__file__)))
     pr = presence()
@@ -1006,14 +1242,15 @@ def _rules_base():
     quiet = sorted((_jload(SILENCE_FILE).get("sounds") or {}).keys())
     if quiet:
         clock += itext("silenced", (", ".join(quiet),))
+    grid = itext("grid", (n("urgent"), n("default"), n("boing"), n("important"), n("urgent"),
+                          n("boing"), n("important"), n("tick"), n("tick_high"), n("tick_low"),
+                          n("peer"), n("done"), n("ack"), n("urgent"), n("escalate"), IGNORE_AFTER,
+                          n("abandon"), n("ignored"), n("questions"), int(questions_cooldown() // 60),
+                          n("relay"), n("compact")))
     if muted():
-        return head + clock + itext("muted", ("%s" % (itext("person_clocked_out") if clocked_out() else
-                                                       "a Zoom meeting is open" if zoom_meeting() else MUTE_FILE + " exists"),))
-    return head + clock + itext("grid", (n("urgent"), n("default"), n("boing"), n("important"), n("urgent"),
-                                        n("boing"), n("important"), n("tick"), n("tick_high"), n("tick_low"),
-                                        n("peer"), n("done"), n("ack"), n("urgent"), n("escalate"), IGNORE_AFTER,
-                                        n("abandon"), n("ignored"), n("questions"), int(questions_cooldown() // 60),
-                                        n("relay"), n("compact")))
+        return head, clock, itext("muted", ("%s" % (itext("person_clocked_out") if clocked_out() else
+                                                     "a Zoom meeting is open" if zoom_meeting() else MUTE_FILE + " exists"),)), True, grid
+    return head, clock, grid, False, grid
 
 
 def sound_name(key):
@@ -1199,6 +1436,15 @@ def speak(label):
 HEADS_FILE = os.path.join(CHIME_HOME, "heads.json")
 NORMAL_VOLUME = 0.5                              # System.Windows.Media.MediaPlayer's own default
 HEAD_GAIN = float(_C.get("head_gain") or 1.2)    # a parley head sounds this much louder
+try:                                             # the person, 2026-11-24: "play the red alert at 150% of normal volume. Same rule for all sessions"
+    RED_ALERT_GAIN = float(_C.get("red_alert_gain") or 1.5)
+except Exception:
+    RED_ALERT_GAIN = 1.5
+
+
+def event_volume(key, vol):
+    """The volume for one sound event: the red alert is RED_ALERT_GAIN times the seat's volume, never above 1.0."""
+    return round(min(1.0, vol * RED_ALERT_GAIN), 3) if key == "red_alert" else vol
 HEAD_FRESH_SECONDS = 24 * 3600
 _SEAT = ""                                       # the seat this process is sounding for, set by main()
 
@@ -1251,7 +1497,7 @@ def play(key):
         if DRY:
             print("SILENCED %s (%s)" % (key, sound_name(key)))
         return
-    vol = head_gain(_SEAT)
+    vol = event_volume(key, head_gain(_SEAT))
     if DRY:
         print("PLAY %s (%s) vol %s%s" % (key, sound_name(key), vol, " head" if is_head(_SEAT) else ""))
         return
@@ -1949,7 +2195,10 @@ def ra_args(argv, valued, flags=()):
 
 
 RA_USAGE = ("usage: chime.py redalert check --kind <slug> [--words \"..\"] | fire --seat <SEAT> --kind <slug> --title \"..\" "
-            "--why \"..\" [--evidence \"..\"] [--card <id>] [--parley <url>] [--session <uuid>] [--worse \"..\"] | verdict "
+            "--why \"..\" [--evidence \"..\"] [--card <id>] [--parley <url>] [--session <uuid>] [--worse \"..\"] "
+            "[--fragment <path>] [--codename \"..\"] | card --id <id> --card <card id> [--parley <url>] [--fragment <path>] "
+            "[--where \"..\"] | card --id <id> --write [--card <card id>] [--fragment <path>] [--codename \"..\"] | uncarded "
+            "[--seat <SEAT>] [--crew <S1,S2>] [--min-age <minutes>] [--updated \"SEAT=ISO;..\"] | verdict "
             "--id <id> --merited|--not-merited [--by \"..\"] [--note \"..\"] | list [--pending] [--seat <SEAT>] | example "
             "--kind <slug> --title \"..\" --why \"..\" --verdict merited|not_merited [--seat <SEAT>] [--evidence \"..\"] "
             "[--by \"..\"] [--when <ISO>]")
@@ -1968,7 +2217,11 @@ def ra_main(argv):
             return ra_cmd_check(ra_args(rest, ("--kind", "--words")))
         if sub == "fire":
             return ra_cmd_fire(ra_args(rest, ("--seat", "--kind", "--title", "--why", "--evidence", "--card", "--parley",
-                                              "--session", "--worse")))
+                                              "--session", "--worse", "--fragment", "--codename")))
+        if sub == "card":
+            return ra_cmd_card(ra_args(rest, ("--id", "--card", "--parley", "--fragment", "--where", "--codename"), ("--write",)))
+        if sub == "uncarded":
+            return ra_cmd_uncarded(ra_args(rest, ("--seat", "--crew", "--min-age", "--updated")))
         if sub == "verdict":
             return ra_cmd_verdict(ra_args(rest, ("--id", "--by", "--note"), ("--merited", "--not-merited")))
         if sub == "list":
@@ -2035,6 +2288,8 @@ def ra_cmd_fire(o):
             print("REFUSED: %s fired %s for this seat and kind %d min ago (verdict %s); it does not sound again inside %d "
                   "hours unless it got materially worse: add --worse \"<what got worse>\""
                   % (prior[0]["id"], ra_txt(prior[0].get("when"), 25), int(prior[1] // 60), prior[0].get("verdict"), RA_HOURS))
+            if prior[0].get("verdict") == "pending" and not (prior[0].get("card") or prior[0].get("parley")) and prior[1] >= RA_CARD_MIN * 60:
+                print("ALERT CARD MISSING %s %s %.1f" % (prior[0]["id"], seat, prior[1] / 3600.0))
             return 3
         reason = ra_silent_reason(session)
         rec = {"id": ra_new_id(), "when": now.isoformat(timespec="seconds"), "seat": seat, "session": session,
@@ -2056,7 +2311,11 @@ def ra_cmd_fire(o):
         ra_seen_stamp(seat)
     print("FIRED %s" % rec["id"])
     print("SOUND %s" % ("played" if reason is None else "not played: " + reason))
-    print("Now: put card on the parley (alert block), open the reply with RED ALERT only if it has not sounded yet")
+    try:                                         # v22: the card is part of the firing
+        ra_apply_card(rec, o)
+    except Exception as e:
+        print("CARD NOT WRITTEN: the card step failed (%s); write the card yourself, then run: chime.py redalert card --id %s "
+              "--card <card id>" % (e.__class__.__name__, rec["id"]))
     return 0
 
 
@@ -2156,6 +2415,318 @@ def ra_cmd_example(o):
     finally:
         ra_unlock(lock)
     print("EXAMPLE %s %s" % (rec["id"], verdict))
+    return 0
+
+
+# ---- v22: the card is part of the firing (the person's standard of 2026-11-18) -------------------------------------
+# `fire` prints the card block and, when it can find the seat's page source, writes it there. `card` records a card on
+# the alert's log line (card, parley, card_where, card_at). `uncarded` is the detector: a pending alert with no card.
+# Everything here is wrapped like the rest of the red alert commands: an error prints a line, it never reaches a hook.
+PARLEY_DIR = os.path.join(os.path.expanduser("~"), ".threadops", "parley")
+FRAGMENTS_FILE = os.path.join(PARLEY_DIR, "fragments.json")   # written by the parley compile: seat -> {path, head, own, when}
+RA_CARD_MIN = 30                                               # minutes a pending alert may have no card before it is reported
+
+
+def ra_zone(d):
+    """EST or EDT for the two Eastern offsets, else the numeric offset (+HH:MM). No time zone database is needed."""
+    off = d.utcoffset()
+    if off is None:
+        return ""
+    m = int(off.total_seconds() // 60)
+    if m in (-300, -240):
+        return "EST" if m == -300 else "EDT"
+    z = d.strftime("%z")
+    return (z[:3] + ":" + z[3:]) if len(z) == 5 else "Z"
+
+
+def ra_stamp(d):
+    d = d.astimezone()
+    return (d.strftime("%Y-%m-%d %H:%M") + " " + ra_zone(d)).strip()
+
+
+def ra_fragment_for(seat, given):
+    """(path, how): how is "given" or "recorded" when there is a path, else the plain reason there is none."""
+    if given:
+        return os.path.abspath(os.path.expanduser(given)), "given"
+    try:
+        with io.open(FRAGMENTS_FILE, encoding="utf-8") as fh:
+            reg = json.load(fh)
+        for k, v in reg.items():
+            if str(k).lower() == str(seat).lower() and isinstance(v, dict) and v.get("path"):
+                p = str(v["path"])
+                if os.path.isfile(p):
+                    return p, "recorded"
+                return None, "the recorded page source is gone (%s); pass --fragment PATH" % p
+    except Exception:
+        pass
+    return None, "no page source is recorded for this seat (a compile of its page, or of its head's page, records it); pass --fragment PATH"
+
+
+def ra_alert_block(rec):
+    d = {"id": rec["id"], "kind": rec.get("kind") or "", "fired": ra_stamp(ra_parse(rec.get("when")) or ra_now()),
+         "why": rec.get("why") or ""}
+    if rec.get("evidence"):
+        d["evidence"] = rec["evidence"]
+    return d
+
+
+def ra_card(rec, card_id, seat, codename):
+    """The card for one alert, in the shape parley 2.20 compiles without a warning."""
+    now = ra_stamp(ra_now())
+    c = {"id": card_id}
+    if codename:
+        c["codename"] = codename
+    c.update({"title": "RED ALERT: " + (rec.get("title") or rec.get("kind") or rec["id"]), "from": seat, "opened": now,
+              "important": True, "urgent": False, "mrp": itext("ra_default_by"), "alert": ra_alert_block(rec),
+              "ask": "Did this merit a red alert? Rule Merited or Not merited on this card.",
+              "steps": [["1", "Rule Merited or Not merited on this card"]],
+              "checked": "%s: written when the alert fired; the seat adds what it checked in the system of record" % now,
+              "origin": {"project": seat, "thread": "red alert " + rec["id"]}})
+    return c
+
+
+def ra_rewrite(rid, mut):
+    """Change the one log line whose id is rid with mut(dict). Every other line stays byte for byte.
+    Returns "ok", "notfound" or "busy"."""
+    lock = ra_lock()
+    if lock is None:
+        return "busy"
+    tmp = ra_log_path() + ".%d.tmp" % os.getpid()
+    try:
+        p = ra_log_path()
+        if not os.path.exists(p):
+            return "notfound"
+        found = False
+        with open(p, "rb") as src, open(tmp, "wb") as dst:
+            for raw in src:
+                out = raw
+                if not found and rid.encode("utf-8") in raw:
+                    try:
+                        d = json.loads(raw.decode("utf-8", errors="replace"))
+                    except Exception:
+                        d = None
+                    if isinstance(d, dict) and d.get("id") == rid:
+                        found = True
+                        mut(d)
+                        out = (json.dumps(d, ensure_ascii=False) + "\n").encode("utf-8")
+                if not out.endswith(b"\n"):
+                    out += b"\n"
+                dst.write(out)
+        if not found:
+            return "notfound"
+        for attempt in range(40):                # Windows refuses to replace a file another process has open
+            try:
+                os.replace(tmp, p)
+                return "ok"
+            except PermissionError:
+                if attempt == 39:
+                    return "busy"
+                time.sleep(0.05)
+        return "busy"
+    finally:
+        ra_unlock(lock)
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+
+
+def ra_set_card(rid, card, parley, where):
+    """Record the card on the alert's log line. A card the line already names and this one replaces goes to card_history."""
+    stamp = ra_now().isoformat(timespec="seconds")
+
+    def mut(d):
+        old = {k: d.get(k, "") for k in ("card", "parley", "card_where", "card_at")}
+        if old["card"] and old["card"] != card:
+            d.setdefault("card_history", []).append(old)
+        d["card"] = card
+        if parley:
+            d["parley"] = ra_txt(parley, 300)
+        d["card_where"] = ra_txt(where, 300)
+        d["card_at"] = stamp
+    return ra_rewrite(rid, mut)
+
+
+def ra_write_card(path, rec, card_id, explicit, seat, codename):
+    """Put the alert's card into the page source at path (valid JSON in, valid JSON out, a backup beside it, never a
+    second card for the same alert id). Returns (state, text, card id). state: "added", "attached" (the block went on a
+    card the seat named with --card), "exists" (the alert is already on a card there; nothing written) or "no"."""
+    import copy
+    import shutil
+    try:
+        st0 = os.stat(path)
+        with open(path, "rb") as f:
+            raw = f.read()
+        bom = raw.startswith(b"\xef\xbb\xbf")
+        text = raw.decode("utf-8-sig")
+        orig = json.loads(text)
+    except Exception as e:
+        return "no", "the page source could not be read as JSON (%s)" % e.__class__.__name__, card_id
+    if not isinstance(orig, dict):
+        return "no", "the page source is not a JSON object", card_id
+    qs = orig.get("questions", [])
+    if not isinstance(qs, list):
+        return "no", "the questions in the page source are not a list", card_id
+    for q in qs:
+        al = q.get("alert") if isinstance(q, dict) else None
+        if isinstance(al, dict) and al.get("id") == rec["id"]:
+            return "exists", "", str(q.get("id") or card_id)
+    d = copy.deepcopy(orig)
+    dq = d.setdefault("questions", [])
+    target = next((q for q in dq if isinstance(q, dict) and str(q.get("id")) == card_id), None)
+    if target is not None:
+        if not explicit:
+            return "no", "a card with the id %s is already there; pass --card <another id>" % card_id, card_id
+        if target.get("alert") is not None:
+            return "no", "card %s already carries another alert; pass --card <another id>" % card_id, card_id
+        target["alert"] = ra_alert_block(rec)
+        mode = "attached"
+    else:
+        dq.append(ra_card(rec, card_id, seat, codename or (d.get("codename") if isinstance(d.get("codename"), str) else "")))
+        mode = "added"
+    d["updated"] = ra_stamp(ra_now())
+    m = re.search(r"\n([ \t]+)\S", text)
+    indent = (m.group(1) if "\t" in m.group(1) else len(m.group(1))) if m else 2
+    crlf = "\r\n" in text
+    out = json.dumps(d, indent=indent, ensure_ascii=bool(re.search(r"\\u[0-9a-fA-F]{4}", text)))
+    if crlf:
+        out = out.replace("\n", "\r\n")
+    if text.endswith("\n"):
+        out += "\r\n" if crlf else "\n"
+    back = json.loads(out)                       # what was written must read back as the original plus the card
+    if mode == "added":
+        back["questions"].pop()
+        if "questions" not in orig:
+            back.pop("questions", None)
+    else:
+        for q in back["questions"]:
+            if isinstance(q, dict) and str(q.get("id")) == card_id:
+                q.pop("alert", None)
+    if "updated" in orig:
+        back["updated"] = orig["updated"]
+    else:
+        back.pop("updated", None)
+    if back != orig:
+        return "no", "the rewritten file would differ from the original beyond the card; nothing written", card_id
+    st1 = os.stat(path)
+    if (st1.st_mtime_ns, st1.st_size) != (st0.st_mtime_ns, st0.st_size):
+        return "no", "the page source changed while it was being read; nothing written", card_id
+    bak = "%s.pre-redalert-%s.bak" % (path, rec["id"])
+    shutil.copy2(path, bak)
+    tmp = "%s.%d.tmp" % (path, os.getpid())
+    try:
+        with open(tmp, "wb") as f:
+            f.write((b"\xef\xbb\xbf" if bom else b"") + out.encode("utf-8"))
+        for attempt in range(40):
+            try:
+                os.replace(tmp, path)
+                break
+            except PermissionError:
+                if attempt == 39:
+                    return "no", "the page source could not be replaced (busy); nothing written", card_id
+                time.sleep(0.05)
+    finally:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+    return mode, bak, card_id
+
+
+def ra_apply_card(rec, o):
+    """Everything after the log line exists: find the page source, write or print the card, record it on the log line, say
+    what is next. Prints; the caller wraps it."""
+    seat = rec.get("seat") or ""
+    named = ra_txt(o.get("--card"), 80)
+    card_id, codename = named or rec["id"], ra_txt(o.get("--codename"), 60)
+    path, how = ra_fragment_for(seat, o.get("--fragment"))
+    head = delegated_to(seat)
+    if head and str(head).startswith("("):
+        head = None
+    state, info, cid = "no", how, card_id
+    if path:
+        state, info, cid = ra_write_card(path, rec, card_id, bool(named), seat, codename)
+    if state in ("added", "attached", "exists"):
+        if state == "exists":
+            print("CARD EXISTS %s in %s: this alert is already on it, nothing was written" % (cid, path))
+        else:
+            print("CARD %s %s in %s (backup %s)" % ("ADDED" if state == "added" else "ATTACHED to existing card", cid, path, info))
+        res = ra_set_card(rec["id"], cid, o.get("--parley"), "fragment " + path)
+        print("LOG LINE %s" % ("updated: card " + cid if res == "ok" else "not updated (%s): run chime.py redalert card --id %s --card %s" % (res, rec["id"], cid)))
+    else:
+        print("CARD NOT WRITTEN: %s" % info)
+        if named:
+            print('ALERT BLOCK (add it as the "alert" field of your card %s):' % card_id)
+            print(json.dumps(ra_alert_block(rec), indent=2, ensure_ascii=False))
+        else:
+            print('CARD BLOCK (add it to the "questions" list of %s):' % (path or "your page source, <SEAT>_PARLEY.json"))
+            print(json.dumps(ra_card(rec, card_id, seat, codename), indent=2, ensure_ascii=False))
+        print("THEN run: chime.py redalert card --id %s --card %s" % (rec["id"], card_id))
+    if head:
+        print("NEXT: tell %s in this turn that the card is in your page source, so it compiles and publishes it. A failed send "
+              "does not end that duty: until the log line shows a card, ALERT CARD MISSING prints on your ticks and on its compile. "
+              "Open the reply with RED ALERT only if it has not sounded yet" % head)
+    else:
+        print("NEXT: compile and publish your page in this turn. Open the reply with RED ALERT only if it has not sounded yet")
+
+
+def ra_cmd_card(o):
+    rid = ra_txt(o.get("--id"), 80)
+    if not rid or not (o.get("--card") or o.get("--write")):
+        print("ERROR: --id <id> and --card <card id> (record a card you added) or --write (write it into the page source) are required")
+        return 2
+    rec = next((a for a in ra_read() if a.get("id") == rid), None)
+    if rec is None:
+        print("NOT FOUND %s" % rid)
+        return 1
+    if o.get("--write"):
+        ra_apply_card(rec, o)
+        return 0
+    where = ra_txt(o.get("--where"), 300) or ("fragment " + os.path.abspath(os.path.expanduser(o["--fragment"])) if o.get("--fragment") else "stated by the seat")
+    res = ra_set_card(rid, ra_txt(o.get("--card"), 80), o.get("--parley"), where)
+    if res != "ok":
+        print("BUSY: the red alert log is locked by another process; run it again" if res == "busy" else "NOT FOUND %s" % rid)
+        return 1
+    print("CARD RECORDED %s on %s" % (ra_txt(o.get("--card"), 80), rid))
+    return 0
+
+
+def ra_cmd_uncarded(o):
+    """One line per pending alert with no card: ALERT CARD MISSING <alert id> <seat> <hours>. With --updated
+    "SEAT=ISO;SEAT=ISO" (the parley compile passes its fragments' updated stamps) also FRAGMENT STALE lines. Nothing
+    is printed when there is nothing to say, and nothing when the log is absent."""
+    try:
+        minage = float(o["--min-age"]) if o.get("--min-age") not in (None, "") else float(RA_CARD_MIN)
+        if minage < 0:
+            raise ValueError
+    except ValueError:
+        print("ERROR: --min-age is a number of minutes, 0 or more")
+        return 2
+    want = set()
+    if o.get("--seat"):
+        want.add(o["--seat"].strip().lower())
+    for s in (o.get("--crew") or "").split(","):
+        if s.strip():
+            want.add(s.strip().lower())
+    now = ra_now().timestamp()
+    rows = [a for a in ra_read() if a.get("source") != "example" and (a.get("verdict") or "pending") == "pending"
+            and (not want or str(a.get("seat") or "").lower() in want)]
+    for a in sorted(rows, key=ra_ts):
+        t = ra_ts(a)
+        if not t or a.get("card") or a.get("parley") or (now - t) / 60.0 < minage:
+            continue
+        print("ALERT CARD MISSING %s %s %.1f" % (a["id"], ra_txt(a.get("seat"), 80) or "-", (now - t) / 3600.0))
+    for part in (o.get("--updated") or "").split(";"):
+        seat, _, iso = part.partition("=")
+        seat, when = seat.strip(), ra_parse(iso)
+        if not seat or when is None:
+            continue
+        mine = [a for a in rows if str(a.get("seat") or "").lower() == seat.lower() and ra_ts(a)]
+        if mine:
+            newest = max(mine, key=ra_ts)
+            if ra_ts(newest) - when.timestamp() >= 60:      # a stamp is to the minute: a card written in the same minute is not older
+                print("FRAGMENT STALE %s updated %s, older than alert %s fired %s" % (
+                    seat, ra_stamp(when), newest["id"], ra_stamp(ra_parse(newest.get("when")))))
     return 0
 
 
@@ -2835,7 +3406,7 @@ def main():
                 play_detached("ack", tab_title(data.get("transcript_path") or "") or "")
         except Exception:
             pass
-        ctx = itext("brakes_rules") if brakes_on(data.get("session_id", "")) else _rules()
+        ctx = itext("brakes_rules") if brakes_on(data.get("session_id", "")) else rules_for_prompt(data)
         sys.stdout.write(json.dumps({"hookSpecificOutput": {"hookEventName": "UserPromptSubmit",
                                                             "additionalContext": ctx}}))
         return 0

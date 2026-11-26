@@ -43,6 +43,7 @@ One key per event (see `sounds.md`): `urgent`, `important`, `boing`, `default`, 
 | `peer_prefixes` | none | text at the start of a prompt that marks it as another session's relayed message (a literal prefix, not a regex) |
 | `notification_prefixes` | none | text at the start of a prompt that marks it as a system notification, not the person |
 | `tick_dir` | `~/.reprompt/scripts` | the folder of the reprompt skill's scripts, whose `keepwarm_common` module holds the tick counters |
+| `rules_text` | `full_once` | how often the prompt hook injects the whole rules block. `full_once`: the whole block on a session's first prompt and on the first prompt after each compaction, one short line (350 characters at most) on every other prompt, plus the clock-out, mute, silenced-sound or RED ALERT notice only when it differs from what the session was last shown. `full_always`: the whole block on every prompt (how chime behaved before version 21). `short_always`: the short line only. Any other value is `full_once` |
 | `stop_gate` | none | path of an optional Python file with `decide(data, config())` and `config()`; when it says `block`, this stop is not the end of the turn and chime stays quiet |
 | `transcripts_glob` | `~/.claude/projects/*/*.jsonl` | where `soundboard_sync.py roster` finds session transcripts; when the glob has a `*` followed by a folder named `home` that wildcard is read as the account folder |
 
@@ -55,6 +56,8 @@ The prompt hook, the clock, mute, silence, brakes and red alert paragraphs are d
 | Key | Placeholders, in order |
 |---|---|
 | `prompt_rules` | the Python path, the script path |
+| `prompt_rules_short` | none (at most 350 characters; the line a session gets on every prompt after the first) |
+| `rules_status_clear` | none (said once when an earlier clock-out, mute or silenced-sound notice no longer holds) |
 | `grid` | 22: the sound names (urgent, default, boing, important, urgent, boing, important, tick, tick_high, tick_low, peer, done, ack, urgent, escalate), the ignore count (`%d`), abandon, ignored, questions, the cooldown in minutes (`%d`), relay, compact |
 | `clock_out` | since, an optional " (note)" |
 | `clock_in` | since |

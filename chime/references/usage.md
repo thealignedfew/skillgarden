@@ -12,6 +12,21 @@ chime does not know how to read usage by itself. Set the config key `usage_serve
 
 A reading is cached for five minutes per account, in `%TEMP%/chime`. The cache also keeps each limit's reset time and the account folder, so `usage mute` can find the end of a cycle. A path written with backslashes and the same path with forward slashes find the same cache and the same played marker.
 
+## The cache file
+
+`%TEMP%/chime/usage_<tag>.json`, rewritten at the end of a turn when the reading is older than five minutes. Other tools may read it as data. The keys written since version 1 never change meaning: `vals` (a list of `[label, percent]`), `at` (local time, no zone), `resets` (label to local time, no zone), `folder` and `home`. Version 21 adds, beside them:
+
+| Key | Meaning |
+|---|---|
+| `schema` | 2 |
+| `at_utc`, `at_offset` | `at` as UTC (`2026-11-20T05:01:00Z`) and the machine's offset when it was written (`-05:00`) |
+| `resets_utc` | every time in `resets`, as UTC |
+| `five_hour` | `null` when the endpoint says no 5-hour window is open; `{"pct", "resets", "resets_utc"}` when one is; the key is absent when the reading did not say, which is not the same as no window |
+| `extra_usage` | `{"enabled": false}`, or `{"enabled": true, "used", "limit", "pct", "currency", "limit_reached"}` with the dollars used and the monthly dollar limit (the endpoint's amounts in minor units divided by `10^decimal_places`); absent when the reading did not say |
+| `extra_usage_pct` | the percent of the monthly extra-usage limit, when it is on |
+
+The entry `monthly extra-usage spend` in `vals` is that same percent under its old label, which misleads (it is a percent, not spend). It stays, because other tools read it by that name.
+
 ## The record
 
 `<chime home>/usage_log.txt` gets one line per fresh reading at or above `usage_log_from_pct` (default 70, at most one per account per five minutes), one per failed or empty reading (at most one per account per 15 minutes) and one per alarm played: time, account name, decision, the values read. The file is cut back when it passes 60 KB. When an alarm seems to be missing, read this file first. The alarm runs only at the end of a turn of a session on that account, so an account with no session ending a turn is never checked.

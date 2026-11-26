@@ -10,6 +10,8 @@ Nothing a person chooses is stored inside the skill folder, because an update re
 - The person's overrides: `<chime home>/config.json`, the same keys as `chime.json`, merged over it key by key (`names`, `labels`, `account_names`, `words`, `spoken_names` and `texts` one level deep). `<chime home>` is `~/.threadops/chime`, or the folder named by the environment variable `CHIME_HOME`.
 - The person's sound files, and the tones chime generates: `<chime home>/sounds/`. A path in config that starts with `user:` (for example `user:my-ding.mp3`) is resolved there. A path that starts with `sounds/` means the skill's own folder (the skill ships none). A path that starts with `gen:` is a generated tone, made into `<chime home>/sounds/gen-<event>-<style>.wav` the first time it is needed.
 - Usage mutes: `<chime home>/usage_mute.json`.
+- The per-session record of the rules text (version 21): `<chime home>/rules_seen/<session id>.json`, written by the prompt hook under `rules_text` `full_once`; safe to delete (the next prompt then gets the whole block).
+- The usage cache, `%TEMP%/chime/usage_<tag>.json`: keys and meaning in `references/usage.md`, "The cache file".
 - A missing or unreadable override file means defaults; it never stops a sound.
 
 ## 2. Command line

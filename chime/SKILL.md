@@ -1,6 +1,6 @@
 ---
 name: chime
-description: "Audible alerts and toasts for Claude Code sessions, so a person who runs several sessions at once can tell from across the room which one needs them and how badly. Use when a reply must open with RED ALERT, MAJOR PROBLEM FOUND, URGENT DECISION NEEDED, IMPORTANT DECISION NEEDED or Decision needed, when writing the closing Sound line every reply carries, when playing an alert mid-turn, when changing which sound an event plays, or when installing, testing or repairing the sound hooks. Owns one alert script (scripts/chime.py). Windows is the supported platform for sound and toasts. A fresh install makes sound with nothing downloaded."
+description: "Audible alerts and toasts for Claude Code sessions, so someone running many can hear which one needs them. Use when a reply must open with RED ALERT, MAJOR PROBLEM FOUND or a DECISION NEEDED phrase, when writing the closing Sound line, playing an alert mid-turn, changing a sound, or installing or repairing the hooks. Windows; ships no audio."
 ---
 
 # chime
@@ -80,6 +80,8 @@ The `prompt` hook adds a short text to every turn, so each session knows these w
 
    The separator is a middle dot, or a spaced full stop when the middle dot is awkward to type. The hook reads the seat from this line for the toast. While muted the line reads `Sound: muted (would play <name>) · SEAT`, and for a silenced sound `Sound: silenced (would play <name>) · SEAT`.
 
+From version 21 the whole text is injected once per session and again after each compaction; every other prompt gets one short line that repeats these two rules in brief (the config key `rules_text` changes that, `references/config.md`). A change to the clock, a mute, a silenced sound or a RED ALERT ruling is added to that line when it happens.
+
 The wording of both rules, and of every other text the hook injects, is a default in the script that a person's config can replace (`references/config.md`).
 
 ## Commands
@@ -96,7 +98,7 @@ chime.py sounds styles [--json]                       the recipe of every style,
 chime.py usage status [--json]                        every account's last usage reading and mute
 chime.py usage mute <ACCOUNT> [--cycle | --until "YYYY-MM-DD HH:MM"] [--by SEAT] [--why "text"]
 chime.py usage unmute <ACCOUNT> [--by SEAT]
-chime.py redalert check|fire|verdict|list|example ...   the red alert log (references/red-alert.md)
+chime.py redalert check|fire|card|uncarded|verdict|list|example ...   the red alert log and each alert's card (references/red-alert.md)
 chime.py play urgent|major|important|compact|redalert "<SEAT>" "<what>"
 ```
 
