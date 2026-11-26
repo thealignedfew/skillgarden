@@ -27,12 +27,16 @@ chime.py redalert uncarded [--seat <SEAT>] [--crew <S1,S2>] [--min-age <minutes>
 chime.py redalert verdict --id RA-20260101-120000-abcd --merited|--not-merited --by "<name>" --note "<their words>"
 chime.py redalert list [--pending] [--seat <SEAT>]
 chime.py redalert example --kind <slug> --title "..." --why "..." --verdict merited|not_merited [--by "<name>"] [--when <ISO>]
+chime.py redalert text-check
+chime.py redalert text-test --approved-by "<name>"
 ```
 
 - `check` prints the past alerts whose kind equals the slug or shares a word with it or with `--words` (newest first, at most 8, each with its verdict and title), then one line: `ADVICE fire`, `ADVICE do not fire: ...`, `ADVICE mixed: read the lines above` or `ADVICE no precedent`. A pending alert is listed but is no precedent. Run it before every fire.
 - `fire` appends one line to the log, sounds `red_alert` unless muted (then the log's `played` holds the reason), shows the toast, and prints `FIRED <id>` and a `SOUND` line. It refuses (exit 3), naming the earlier id, while the same seat and kind has a pending or merited alert under 6 hours old, unless `--worse` is given.
 - `verdict` sets the verdict; a second verdict on the same id replaces the first and keeps the old one in `verdict_history`. It is the only command that rewrites the log (atomically, under a lock).
 - `example` adds a precedent with `source: example` and no sound: a case the person gave as an example, not an alert that fired.
+- `text-check` prints what the text setting says (on or off, route, server, whether a topic is set and how long, the daily cap, texts sent today) and whether it is ready. It makes no network call and never prints the topic.
+- `text-test` sends one test text. It refuses (exit 2) without `--approved-by "<name>"`: a test text goes out only after the person has approved it by name. It counts toward the daily cap.
 - `card` records a card on the alert's log line (`--card`, with `--parley` or `--fragment` or `--where` for where it is), or with `--write` writes the card into the seat's page source and records it. It changes that one line and no other.
 - `uncarded` prints one line per pending alert that has no card, `ALERT CARD MISSING <alert id> <seat> <hours>`, and nothing when there is none or when there is no log. `--seat` and `--crew` choose the seats (both together are their union), `--min-age` is the minutes an alert may go without a card before it is reported (30). With `--updated` (the parley compile passes each fragment's `updated` stamp) it also prints `FRAGMENT STALE <seat> updated <time>, older than alert <id> fired <time>` for a seat whose page source is a minute or more older than its newest pending alert.
 
@@ -55,3 +59,15 @@ The person's standard is that every firing gets a card on a page they read, in t
 - **Then it says what is next.** A delegated seat tells its manager in the same turn that the card is in its page source, so the manager compiles and publishes it; a failed send does not end that duty. A seat with its own page compiles and publishes it.
 - **Seeing a missing card.** `redalert uncarded` is the detector. The seat's own ticks (reprompt 19.3) and the compile of a page (parley 2.27) run it and print `ALERT CARD MISSING` lines while an alert has no card. Both are silent and fast when there is no log, and a failure of the check never stops a tick or a compile.
 - The card the tool writes has the id of the alert unless `--card` names another, the title `RED ALERT: <title>`, `important` true, the question "Did this merit a red alert?", one step, the alert block, and `checked` saying it was written when the alert fired; the seat adds what it checked in the system of record and its own thread. It compiles without a warning about the alert.
+
+## A text to the phone (version 23)
+
+A fired red alert can also reach the person's phone as a push message. It is off until the person adds a `text_alerts` block to `<chime home>/config.json` (the keys are in `references/config.md`). The route built is ntfy, a free push app: a session sends one web request to a topic name, and the app on the phone shows it. The topic name is the password of that route, so it lives only in the person's own `config.json`: chime never prints it, logs it or writes it on a card.
+
+- **When.** In `fire`, after the log line and the sound and before the card. A `fire` that is refused as a repeat (the same seat and kind inside 6 hours) returns before it, so one alert is one text. A seat on brakes sends none. An alert that only sounds through `play redalert` sends none: the text goes with the log line.
+- **What.** The title line `RED ALERT: <seat>`, then the alert's title cut at 60 characters, then one link (the alert's `--parley` address when it is an https address, else the `link` in the config, else none). Nothing else is added: the text carries no figure, name or evidence from the alert.
+- **How many.** At most `daily_cap` texts a day (6 unless the config says otherwise); the next is logged and not sent, and its card is written as always. There are no quiet hours.
+- **What a failure does.** Nothing else. `fire` prints one line, `TEXT sent`, `TEXT not sent: <reason>` or `TEXT off`, and goes on to the card; the sound and the log row have already happened. The send waits 5 seconds at most. A failed send is not counted against the cap.
+- **The log.** `<chime home>/text_log.txt`, one line per decision (the alert id, the seat, what happened), cut back past 60 KB, with no topic. `text_count.json` holds the day's count.
+- **Safe to test.** With `CHIME_DRY_RUN=1` a text to any address but this machine's own is never sent (`TEXT dry run: would send N characters`), and a server address must be https unless it is this machine's own. A test of the code can therefore point `server` at a local stand-in.
+- **Not built.** Pushover and Twilio are not in the code.

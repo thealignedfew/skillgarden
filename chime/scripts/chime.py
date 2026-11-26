@@ -19,8 +19,9 @@ standard library only. Windows is the supported platform for sound and toasts.
   python chime.py play urgent|major|important|compact|redalert "<SEAT>" "<what to look at>"
                                 Mid-turn, from a shell command, so the person can refocus while the turn runs.
   python chime.py prompt        UserPromptSubmit hook: injects the per-turn chime rules.
-  python chime.py redalert check|fire|card|uncarded|verdict|list|example ...
-                                The red alert log and its commands.
+  python chime.py redalert check|fire|card|uncarded|verdict|list|example|text-check|text-test ...
+                                The red alert log and its commands. A fired alert may also send one push text to the
+                                person's phone when config.json has a text_alerts block (references/red-alert.md).
   python chime.py usage status|mute|unmute ...      The per-account low-usage mute.
   python chime.py sounds list|set|generate|reset|styles ...
                                 A person's own sounds, kept outside the skill folder.
@@ -2201,7 +2202,7 @@ RA_USAGE = ("usage: chime.py redalert check --kind <slug> [--words \"..\"] | fir
             "[--seat <SEAT>] [--crew <S1,S2>] [--min-age <minutes>] [--updated \"SEAT=ISO;..\"] | verdict "
             "--id <id> --merited|--not-merited [--by \"..\"] [--note \"..\"] | list [--pending] [--seat <SEAT>] | example "
             "--kind <slug> --title \"..\" --why \"..\" --verdict merited|not_merited [--seat <SEAT>] [--evidence \"..\"] "
-            "[--by \"..\"] [--when <ISO>]")
+            "[--by \"..\"] [--when <ISO>] | text-check | text-test --approved-by \"<name>\"")
 
 
 def ra_main(argv):
@@ -2218,6 +2219,10 @@ def ra_main(argv):
         if sub == "fire":
             return ra_cmd_fire(ra_args(rest, ("--seat", "--kind", "--title", "--why", "--evidence", "--card", "--parley",
                                               "--session", "--worse", "--fragment", "--codename")))
+        if sub == "text-check":
+            return ra_cmd_text_check(ra_args(rest, ()))
+        if sub == "text-test":
+            return ra_cmd_text_test(ra_args(rest, ("--approved-by",)))
         if sub == "card":
             return ra_cmd_card(ra_args(rest, ("--id", "--card", "--parley", "--fragment", "--where", "--codename"), ("--write",)))
         if sub == "uncarded":
@@ -2261,6 +2266,206 @@ def ra_cmd_check(o):
     else:
         print("ADVICE no precedent")
     return 0
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Text alerts (v23, 2026-11-26). A fired red alert may also reach the owner's phone as a push message. Off until the
+# owner adds a "text_alerts" block to <chime home>/config.json. One path for the whole house: the text names the seat.
+# Rules the owner approved on 2026-11-25: one text per fired alert (a refused repeat never reaches this code); a daily
+# cap; no quiet hours; the text is the seat, a title of at most 60 characters and a page link, nothing else; a failed
+# send never stops the sound, the log or the card; a test text only after the owner approves it by name.
+# The topic is the password of the push route: it is never printed, never logged and never written to a card.
+# ---------------------------------------------------------------------------------------------------------------
+TEXT_LOG = os.path.join(CHIME_HOME, "text_log.txt")
+TEXT_COUNT = os.path.join(CHIME_HOME, "text_count.json")
+TEXT_TOPIC_RX = re.compile(r"^[A-Za-z0-9_-]{20,64}$")
+TEXT_TIMEOUT = 5                                  # seconds; a slow push service never holds a session
+TEXT_CAP = 6                                      # texts a day unless the config says otherwise
+TEXT_PRIORITIES = ("min", "low", "default", "high", "urgent")
+TEXT_LOOPBACK = ("127.0.0.1", "localhost", "[::1]")
+
+
+def text_cfg():
+    """The text_alerts block of <chime home>/config.json, or {} when absent or unreadable."""
+    try:
+        with open(USER_CONFIG, encoding="utf-8-sig") as fh:
+            c = json.load(fh)
+        t = c.get("text_alerts") if isinstance(c, dict) else None
+        return t if isinstance(t, dict) else {}
+    except Exception:
+        return {}
+
+
+def text_log(line):
+    """One short line per text decision. Never the topic. The file is cut back when it passes 60 KB."""
+    try:
+        os.makedirs(CHIME_HOME, exist_ok=True)
+        with open(TEXT_LOG, "a", encoding="utf-8") as fh:
+            fh.write("%s | %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), ra_txt(line, 200)))
+        if os.path.getsize(TEXT_LOG) > 60000:
+            with open(TEXT_LOG, encoding="utf-8", errors="replace") as fh:
+                keep = fh.readlines()[-300:]
+            with open(TEXT_LOG, "w", encoding="utf-8") as fh:
+                fh.writelines(keep)
+    except Exception:
+        pass
+
+
+def text_today():
+    """How many texts went out today (local date)."""
+    try:
+        with open(TEXT_COUNT, encoding="utf-8") as fh:
+            d = json.load(fh)
+        return int(d["count"]) if d.get("date") == time.strftime("%Y-%m-%d") else 0
+    except Exception:
+        return 0
+
+
+def text_count_add():
+    try:
+        os.makedirs(CHIME_HOME, exist_ok=True)
+        tmp = TEXT_COUNT + ".%d.tmp" % os.getpid()
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump({"date": time.strftime("%Y-%m-%d"), "count": text_today() + 1}, fh)
+        os.replace(tmp, TEXT_COUNT)
+    except Exception:
+        pass
+
+
+def text_cap(cfg):
+    try:
+        n = int(cfg.get("daily_cap", TEXT_CAP))
+    except Exception:
+        n = TEXT_CAP
+    return max(1, min(n, 50))
+
+
+def text_ready(cfg):
+    """(server, topic, problem). The route is ntfy; its server must be https (a loopback address may be http, for tests)."""
+    route = str(cfg.get("route") or "ntfy").strip().lower()
+    if route != "ntfy":
+        return "", "", "route %s is not built (only ntfy)" % ra_txt(route, 20)
+    topic = str(cfg.get("topic") or "").strip()
+    if not TEXT_TOPIC_RX.match(topic):
+        return "", "", "topic missing, or not 20 to 64 letters, digits, - or _"
+    base = str(cfg.get("server") or "https://ntfy.sh").strip().rstrip("/")
+    m = re.match(r"^(https?)://(\[::1\]|[A-Za-z0-9.-]+)(:\d{1,5})?$", base)
+    if not m:
+        return "", "", "server is not a plain web address"
+    if m.group(1) != "https" and m.group(2).lower() not in TEXT_LOOPBACK:
+        return "", "", "server must be https"
+    return base, topic, ""
+
+
+def text_post(base, topic, seat_line, body, link, priority):
+    """One POST. (True, 'http 200') or (False, reason). Never raises, never returns the topic."""
+    try:
+        import urllib.request
+        import urllib.error
+    except Exception:
+        return False, "no network library"
+    try:
+        req = urllib.request.Request(base + "/" + topic, data=body.encode("utf-8"), method="POST")
+        req.add_header("Title", seat_line.encode("ascii", "replace").decode("ascii"))
+        req.add_header("Priority", priority if priority in TEXT_PRIORITIES else "high")
+        req.add_header("Tags", "rotating_light")
+        if link and link.isascii():
+            req.add_header("Click", link)
+        with urllib.request.urlopen(req, timeout=TEXT_TIMEOUT) as r:
+            code = int(getattr(r, "status", 0) or 0)
+        return (200 <= code < 300), "http %d" % code
+    except urllib.error.HTTPError as e:
+        return False, "http %d" % e.code
+    except Exception as e:
+        return False, e.__class__.__name__
+
+
+def text_link(rec, cfg):
+    for cand in (rec.get("parley"), cfg.get("link")):
+        c = ra_txt(cand, 300)
+        if c.startswith("https://") and " " not in c:
+            return c
+    return ""
+
+
+def ra_text(rec, reason):
+    """One push text for a fired red alert. Prints one line (TEXT off, TEXT sent, TEXT not sent: <why>), writes one line
+    to text_log.txt, and never raises: nothing here can stop the sound, the log row or the card."""
+    try:
+        cfg = text_cfg()
+        if not cfg.get("enabled"):
+            print("TEXT off")
+            return
+        seat, title = ra_txt(rec.get("seat"), 40), ra_txt(rec.get("title"), 60)
+        tag = "%s %s" % (rec.get("id", "?"), seat)
+        if reason == "brakes on":                          # a braked session shows and says nothing
+            text_log(tag + " | not sent: brakes on")
+            print("TEXT not sent: brakes on")
+            return
+        base, topic, problem = text_ready(cfg)
+        if problem:
+            text_log(tag + " | not sent: " + problem)
+            print("TEXT not sent: " + problem)
+            return
+        cap = text_cap(cfg)
+        if text_today() >= cap:
+            text_log(tag + " | not sent: daily cap of %d reached" % cap)
+            print("TEXT not sent: daily cap of %d reached" % cap)
+            return
+        link = text_link(rec, cfg)
+        body = title + ("\n" + link if link else "")
+        if DRY and not re.match(r"^http://(127\.0\.0\.1|localhost|\[::1\])", base):
+            print("TEXT dry run: would send %d characters" % len(body))   # a dry run never leaves the machine
+            return
+        ok, why = text_post(base, topic, "RED ALERT: " + seat, body, link, str(cfg.get("priority") or "high").lower())
+        if ok:
+            text_count_add()
+        text_log(tag + " | " + ("sent (%s)" % why if ok else "not sent: " + why))
+        print("TEXT sent" if ok else "TEXT not sent: " + why)
+    except Exception as e:
+        print("TEXT not sent: %s" % e.__class__.__name__)
+
+
+def ra_cmd_text_check(o):
+    """What the text setting says, with no network call. Never prints the topic."""
+    cfg = text_cfg()
+    base, topic, problem = text_ready(cfg)
+    print("TEXT config: %s; route %s; server %s; topic %s; daily cap %d; sent today %d"
+          % ("enabled" if cfg.get("enabled") else "off", ra_txt(cfg.get("route") or "ntfy", 20),
+             re.sub(r"^https?://", "", str(cfg.get("server") or "https://ntfy.sh"))[:60],
+             ("set (%d characters)" % len(topic)) if topic else "not set", text_cap(cfg), text_today()))
+    print("TEXT ready" if (cfg.get("enabled") and not problem) else "TEXT not ready: " + (problem or "enabled is not true"))
+    return 0
+
+
+def ra_cmd_text_test(o):
+    """One test text, only after the owner has approved it by name: --approved-by "<name>" is required."""
+    who = ra_txt(o.get("--approved-by"), 60)
+    if not who:
+        print("ERROR: a test text needs the owner's approval by name: --approved-by \"<name>\"")
+        return 2
+    cfg = text_cfg()
+    if not cfg.get("enabled"):
+        print("TEXT off")
+        return 1
+    base, topic, problem = text_ready(cfg)
+    if problem:
+        text_log("test | not sent: " + problem)
+        print("TEXT not sent: " + problem)
+        return 1
+    if text_today() >= text_cap(cfg):
+        print("TEXT not sent: daily cap of %d reached" % text_cap(cfg))
+        return 1
+    if DRY and not re.match(r"^http://(127\.0\.0\.1|localhost|\[::1\])", base):
+        print("TEXT dry run: would send the test text")
+        return 0
+    ok, why = text_post(base, topic, "chime test", "Test text from chime. Nothing is wrong.", "",
+                        str(cfg.get("priority") or "high").lower())
+    if ok:
+        text_count_add()
+    text_log("test approved by %s | %s" % (who, "sent (%s)" % why if ok else "not sent: " + why))
+    print("TEXT sent" if ok else "TEXT not sent: " + why)
+    return 0 if ok else 1
 
 
 def ra_cmd_fire(o):
@@ -2311,6 +2516,7 @@ def ra_cmd_fire(o):
         ra_seen_stamp(seat)
     print("FIRED %s" % rec["id"])
     print("SOUND %s" % ("played" if reason is None else "not played: " + reason))
+    ra_text(rec, reason)                         # v23: the text to the phone; never raises, never blocks the card
     try:                                         # v22: the card is part of the firing
         ra_apply_card(rec, o)
     except Exception as e:

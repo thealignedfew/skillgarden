@@ -49,6 +49,26 @@ One key per event (see `sounds.md`): `urgent`, `important`, `boing`, `default`, 
 
 `usage_server`, `stop_gate` and `tick_dir` name files chime imports and runs. Set them only to code you wrote or trust.
 
+## text_alerts: a push text for each fired red alert
+
+One key, a block of its own, off unless `enabled` is true. It holds a secret (the topic), so keep `config.json` out of any shared or published folder.
+
+| Key | Default | What it does |
+|---|---|---|
+| `enabled` | false | `true` turns the texts on |
+| `route` | `ntfy` | the push service; `ntfy` is the only one built |
+| `server` | `https://ntfy.sh` | the ntfy server; a plain https address with no path (a self-hosted server works). `http` is accepted only for this machine's own address, for tests |
+| `topic` | none | the topic name, 20 to 64 letters, digits, `-` or `_`; make it long and random, because anyone who knows it can read and send to it |
+| `daily_cap` | 6 | texts a day, 1 to 50; the next is logged and not sent |
+| `priority` | `high` | ntfy priority: `min`, `low`, `default`, `high` or `urgent` |
+| `link` | none | an https address added to the text when the alert names no page of its own |
+
+```
+"text_alerts": {"enabled": true, "route": "ntfy", "topic": "<a long random name>", "daily_cap": 6}
+```
+
+`chime.py redalert text-check` shows the state without printing the topic. The rules for what is sent are in `references/red-alert.md`.
+
 ## texts: every sentence chime injects
 
 The prompt hook, the clock, mute, silence, brakes and red alert paragraphs are defaults in `scripts/chime.py` (`DEFAULT_TEXTS`). The config key `texts` replaces any of them by key; a text whose `%` placeholders do not fit is ignored and the default is used.
