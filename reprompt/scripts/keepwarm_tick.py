@@ -117,8 +117,9 @@ ap.add_argument("--prev-prompt", default=None,
 ap.add_argument("--hybrid", type=int, default=None,
                 help="every Nth tick is a full #StandReadyLow check; default 10 for KeepWarmHigh, 0 otherwise")
 ap.add_argument("--plan", default=None,
-                help='with --arm: "a b c". a level 1 KeepWarmHigh, 2 StandReadyLow, 3 StandReadyHigh; '
-                     'b ticks per level before stepping down (0 never); c quiet ticks before level a starts')
+                help='with --arm: "a[/p] [b[/y]] [c]". a level 1 KeepWarmHigh, 2 StandReadyLow, 3 StandReadyHigh; '
+                     'p the fast period with level 3 (5 to 30, default 15); b ticks per level before stepping down (0 never), '
+                     'or b/y with level 3 (b ticks at 3, then y at 2); c quiet ticks before level a starts; 0 or off stops')
 ap.add_argument("--parley", default=None,
                 help="the URL of this session's parley page: stored in the state file and shown on every full tick; "
                      "with only --session it registers and exits; 'none' clears it")
@@ -134,6 +135,10 @@ def need_key():
         sys.exit(1)
     return k
 
+
+# The stop words: --plan 0, off or stop act as --stop (only a plan that is exactly one of these; "2 0 7" keeps its meaning).
+if a.plan is not None and a.plan.strip().lower() in ("0", "off", "stop"):
+    a.stop = True
 
 # --stop: the user ended the loop. Needs only the transcript path or the seat name.
 if a.stop:
@@ -185,6 +190,41 @@ PERIODS = {v[0]: v[1] for v in LOOPS.values()}
 
 # The numbered plan (/reprompt a b c). Resolved here, before anything reads the loop, so the rest of the tick is unchanged.
 LEVELS = {1: "#KeepWarmHigh", 2: "#StandReadyLow", 3: "#StandReadyHigh"}
+
+
+def _parse_plan(txt):
+    """"a[/p] [b[/y]] [c]". p: level 3's period, 5 to 30 minutes (15 when left out). b/y: ticks at level 3, then at level 2
+    (y 0: hold at 2). A single b keeps its meaning: the same count at each level. Returns ([a, b, c], p, [b, y])."""
+    t = txt.replace(",", " ").split()
+    assert 1 <= len(t) <= 3
+    h = t[0].split("/")
+    assert 1 <= len(h) <= 2
+    lv, pp = int(h[0]), (int(h[1]) if len(h) == 2 else None)
+    assert lv in LEVELS and (pp is None or (lv == 3 and 5 <= pp <= 30))
+    bs = [int(x) for x in t[1].split("/")] if len(t) > 1 else [0]
+    assert 1 <= len(bs) <= 2 and all(x >= 0 for x in bs) and (len(bs) == 1 or lv == 3)
+    c = int(t[2]) if len(t) > 2 else 0
+    assert c >= 0
+    return [lv, bs[0], c], pp, bs
+
+
+def _plan_limit(p, lvl):
+    """Ticks to run at level lvl before stepping down; 0 = hold there."""
+    bs = p.get("bs")
+    if isinstance(bs, list) and bs:
+        i = p["a"] - lvl
+        return bs[i] if 0 <= i < len(bs) else 0
+    return p.get("b", 0)
+
+
+def _plan_text(p):
+    if p.get("text"):
+        return p["text"]
+    h = "%d/%d" % (p["a"], p["p"]) if p.get("p") else "%d" % p["a"]
+    m = "/".join(str(x) for x in p["bs"]) if isinstance(p.get("bs"), list) and len(p["bs"]) > 1 else "%d" % p.get("b", 0)
+    return "%s %s %d" % (h, m, p.get("c", 0))
+
+
 PLAN = None
 PLAN_NOTE = ""
 _plan_wanted = bool(a.plan) or (a.loop or "").strip().lstrip("#").lower() in ("plan", "reprompt")
@@ -194,13 +234,17 @@ if _plan_wanted:
     _pst = load_state(key) or {}
     if a.arm:
         try:
-            _n = [int(x) for x in a.plan.replace(",", " ").split()]
-            assert 1 <= len(_n) <= 3 and _n[0] in LEVELS and all(x >= 0 for x in _n)
+            _n, _pp, _bs = _parse_plan(a.plan)
         except Exception:
-            ap.error('--plan %r must be "a [b [c]]": a is 1, 2 or 3; b and c are whole numbers, 0 or more' % a.plan)
-        _n += [0] * (3 - len(_n))
+            ap.error('--plan %r must be "a[/p] [b[/y]] [c]": a is 1, 2 or 3; p (level 3 only) 5 to 30 minutes; b, y and c whole '
+                     'numbers, 0 or more; b/y only when a is 3' % a.plan)
         PLAN = {"a": _n[0], "b": _n[1], "c": _n[2], "level": 0 if _n[2] > 0 else _n[0], "k": 0,
                 "delay_loop": LEVELS[1], "armed_at": _pnow.isoformat()}   # the quiet-first ticks are always #KeepWarmHigh
+        if _pp:
+            PLAN["p"] = _pp                        # level 3's own period (/reprompt 3/10)
+        if len(_bs) > 1:
+            PLAN["bs"] = _bs                       # one count per level (/reprompt 3 n/y)
+        PLAN["text"] = _plan_text(PLAN)
     else:
         PLAN = _pst.get("plan") if isinstance(_pst.get("plan"), dict) else None
         if PLAN is None:
@@ -219,22 +263,22 @@ if _plan_wanted:
                 _moved = False
                 if PLAN.get("level", 0) == 0 and PLAN.get("k", 0) >= PLAN.get("c", 0):
                     PLAN["level"], PLAN["k"], _moved = PLAN["a"], 0, True
-                while PLAN["level"] > 1 and PLAN.get("b", 0) > 0 and PLAN.get("k", 0) >= PLAN["b"]:
+                while PLAN["level"] > 1 and _plan_limit(PLAN, PLAN["level"]) > 0 and PLAN.get("k", 0) >= _plan_limit(PLAN, PLAN["level"]):
                     PLAN["level"], PLAN["k"], _moved = PLAN["level"] - 1, 0, True
                 PLAN["k"] = PLAN.get("k", 0) + 1
                 PLAN["moved"] = _moved
     if PLAN is not None:
         _eff = PLAN.get("delay_loop", LEVELS[1]) if PLAN["level"] == 0 else LEVELS[PLAN["level"]]
         a.loop = _eff.lstrip("#")
-        a.period = None
+        a.period = PLAN["p"] if (PLAN.get("p") and PLAN["level"] == 3) else None   # /reprompt 3/10
         if PLAN["level"] == 0:
             _where = "quiet %d/%d as %s, then level %d %s" % (PLAN["k"], PLAN["c"], _eff, PLAN["a"], LEVELS[PLAN["a"]])
-        elif PLAN["level"] > 1 and PLAN["b"] > 0:
-            _where = "level %d %s %d/%d, then level %d %s" % (PLAN["level"], _eff, PLAN["k"], PLAN["b"],
+        elif PLAN["level"] > 1 and _plan_limit(PLAN, PLAN["level"]) > 0:
+            _where = "level %d %s %d/%d, then level %d %s" % (PLAN["level"], _eff, PLAN["k"], _plan_limit(PLAN, PLAN["level"]),
                                                                PLAN["level"] - 1, LEVELS[PLAN["level"] - 1])
         else:
             _where = "level %d %s, holding" % (PLAN["level"], _eff)
-        PLAN_NOTE = "PLAN %d %d %d: %s" % (PLAN["a"], PLAN["b"], PLAN["c"], _where)
+        PLAN_NOTE = "PLAN %s: %s" % (_plan_text(PLAN), _where)
 if a.loop:
     _k = a.loop.strip().lstrip("#").lower()
     if _k not in LOOPS:

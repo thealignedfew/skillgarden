@@ -22,17 +22,18 @@ Two scripts do the counting, so the session never guesses: `scripts/keepwarm_tic
 
 ## The command
 
-`/reprompt <level> <step-down> <quiet-first>`: three whole numbers; leave off the ones you do not need.
+`/reprompt <level> <step-down> <quiet-first>`: three whole numbers; leave off the ones you do not need. Level 3 and its step-down also take a slash form (below).
 
 | Position | Name | Meaning | Left out |
 |---|---|---|---|
-| 1 | level | where the session ends up working: 1 warm (#KeepWarmHigh), 2 ready, slow (#StandReadyLow, a full check every 50 minutes), 3 ready, fast (#StandReadyHigh, every 15 minutes) | 2 |
-| 2 | step-down | after this many ticks at a level above 1, drop one level; 0 means stay | 0 |
+| 1 | level | where the session ends up working: 1 warm (#KeepWarmHigh), 2 ready, slow (#StandReadyLow, a full check every 50 minutes), 3 ready, fast (#StandReadyHigh, every 15 minutes; `3/10` every 10, from 5 to 30) | 2 |
+| 2 | step-down | after this many ticks at a level above 1, drop one level; 0 means stay. With level 3, `n/y`: n ticks at 3, then y at 2, then 1 (y 0: stay at 2) | 0 |
 | 3 | quiet-first | this many QUIET ticks first (always #KeepWarmHigh, whatever the session was doing), then the level starts | 0 |
 
 - `/reprompt` is `/reprompt 2 0 0`: ready, slow, at once, for good.
 - `/reprompt 2 0 8`: eight quiet ticks, then ready, slow, for good. Quiet means quiet: the session does not keep the loop it was in.
-- `/reprompt 3 4`: four fast ticks, four slow ticks, then warm. `/reprompt 1`: warm only. `/reprompt stop`: end the loop.
+- `/reprompt 3 4`: four fast ticks, four slow ticks, then warm. `/reprompt 1`: warm only. `/reprompt stop`, `/reprompt off` and `/reprompt 0`: end the loop (only a first number of 0 with nothing after it, so `/reprompt 2 0 7` keeps its meaning).
+- `/reprompt 3/10`: fast ticks every 10 minutes, for good. `/reprompt 3/5 6/4`: six ticks every 5 minutes, four slow ticks, then warm. `/reprompt 3 10/0`: ten fast ticks, then slow for good.
 - Typing the command again with numbers always starts the plan over.
 - A tick fires one period after arming, not at once, so eight quiet ticks at 50 minutes take about six and a half hours.
 - The reply to the command says, in one line each: what runs now, what follows, the next tick time, how to stop.
@@ -87,7 +88,7 @@ The user has said yes, and not one moment before:
 
 1. `CronList`, then `CronDelete` every pending reprompt job of this session.
 2. Run the arm command (it records a baseline and prints `FIRST cron="..."`):
-   - a plan: `python "<TICK_DIR>/keepwarm_tick.py" --seat <SEAT> --arm --plan "a b c" --session "<transcript path>" --watch "<watch file>"`, with no `--loop`. It prints `PLAN a b c: ...`.
+   - a plan: `python "<TICK_DIR>/keepwarm_tick.py" --seat <SEAT> --arm --plan "a b c" --session "<transcript path>" --watch "<watch file>"`, with no `--loop`. It prints `PLAN a b c: ...`. Pass the numbers exactly as typed, slashes included (`--plan "3/10 6/4 0"`); `--plan 0`, `off` or `stop` records a stop instead.
    - one plain loop: the same with `--loop <KeepWarmHigh|KeepWarmLow|StandReadyLow|StandReadyMid|StandReadyHigh>` in place of `--plan`. Arming a plain loop ends any plan.
 3. `CronCreate(cron=<that cron>, recurring=false, prompt=<the wake prompt below, filled in>)`.
 4. Say the plan in one line (what runs now, what follows, the next tick) and how to stop it.
