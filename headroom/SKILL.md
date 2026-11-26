@@ -1,6 +1,6 @@
 ---
 name: headroom
-description: "Headroom (formerly usage-mirror): mirrors a person's Claude usage across one or more local Claude Code account homes into one self-contained HTML page (optionally a claude.ai Artifact). Per-session tokens and API-equivalent cost from local transcripts, live plan meters (5-hour, weekly, per-model weekly, extra usage) from the account usage endpoint, a run-out forecast, daily history, and a 12-hour outliers review. Use when the user asks how much they have used, whether they will run out of usage, why a day or a session was expensive, what is eating their limits, how to see several accounts together, or asks to set up, refresh, publish or maintain a usage page. Read WHITEPAPER.md first for how it works, what it cannot see, and the open topics."
+description: "headroom: how much of your Claude usage is left. Builds one page from your local Claude Code records: tokens and API-equivalent cost per session, live plan meters for several accounts, a run-out forecast and a 12-hour review. Use for how much used, will I run out, why was a day expensive, or to set up or refresh the usage page."
 version: "1.1.0"
 ---
 
