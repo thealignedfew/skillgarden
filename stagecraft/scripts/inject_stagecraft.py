@@ -296,7 +296,7 @@ def main(argv=None):
                 if a.out:
                     io.open(a.out, "w", encoding="utf-8", newline="").write(text)
                 return 0
-            own = re.sub(r"<!-- PB:(STYLE|SCRIPT) -->\s*<(style|script)\b[^>]*>.*?</>", "", text, flags=re.S)   # the page's own text, without Stagecraft's style and script
+            own = re.sub(r"<!-- PB:(STYLE|SCRIPT) -->\s*<(style|script)\b[^>]*>.*?</\2>", "", text, flags=re.S)   # the page's own text, without Stagecraft's style and script
             cfg = carry_script(carried(old[1]), old[1].get("detail") is False, "PB_CONFIG" in own)
             at = text.find("<!-- PB:SCRIPT -->")
             if at < 0:

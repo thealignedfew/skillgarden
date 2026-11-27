@@ -195,7 +195,7 @@ def main():
         m = re.search(re.escape(sel) + r"([^{}]*)\}", css)
         body = m.group(1) if m else ""
         decls = [d.strip() for d in body.split(";") if d.strip() and not d.strip().startswith("box-shadow")]   # a shadow is not a text or background colour
-        literal = [c for d in decls for c in re.findall(r"#[0-9a-fA-F]{3,6}|rgba?\([^)]*\)", d)]
+        literal = [c for d in decls for c in re.findall(r"#[0-9a-fA-F]{3,6}\b|rgba?\([^)]*\)", d)]
         ok = bool(m) and all(w in body for w in want) and not literal
         bad += 0 if ok else 1
         print("  %s %s uses palette tokens (%s)%s" % ("PASS" if ok else "FAIL", sel.strip(" {"), "; ".join(want), "" if ok else " [missing rule, token or a literal colour: %s]" % literal))
